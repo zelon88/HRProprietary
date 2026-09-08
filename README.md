@@ -1,155 +1,122 @@
 # HRProprietary Engine
 
-A runtime for PHP applications that hand untrusted files to third-party tools.
+The part of a self-hosted application that has nothing to do with what the application
+actually does.
 
-It came out of [HRConvert2](https://github.com/zelon88/HRConvert2), a file conversion server
-that accepts uploads from anyone and feeds them to FFmpeg, ImageMagick, LibreOffice,
-OpenSCAD and a dozen others. Those tools are the attack surface. This is what stands
-around them.
+Sandboxing. Resource budgets. Dependency management. Configuration that repairs itself.
+Network egress control. Logging. Long-running managers that survive a request ending.
 
----
-
-## What it does
-
-**Sandboxes every command.** `sandboxCommand()` wraps a dependency in a Bubblewrap
-namespace with no network, a minimal device set, a tmpfs for anything writable, and
-read-only access to the two directories it was handed. A command that cannot be sandboxed
-must carry a comment saying why.
-
-**Never lets a tool resolve a name.** The application resolves, inspects the address, and
-hands the tool the address rather than the name. A sandbox with a network and no resolver
-cannot look anything up, which is the enforcement rather than the policy. See
-[ABOUT_NETWORK_ISOLATION.txt](Documentation/ABOUT_NETWORK_ISOLATION.txt).
-
-**Refuses addresses that are not publicly routable.** Private ranges, carrier NAT,
-documentation and benchmarking ranges, multicast, link-local, and IPv4 wrapped in IPv6 —
-`::ffff:127.0.0.1` is loopback written in a form the IPv4 checks never see.
-
-**Runs work under managers with a budget.** Four manager roles behind unix sockets track
-workers, hand out and reclaim operation budget, and terminate what overruns. A fifth, the
-Environment Manager, runs as root on a timer, opens no socket, and watches the host.
-
-**Shreds values rather than releasing them.** `purgeSensitiveMemory()` overwrites a string's
-bytes before letting go, and the convention is that every local is destroyed before its
-function returns.
+You write the part that makes your application yours. The Engine does the rest.
 
 ---
 
-## What it is not
+## What you get
 
-It is not a framework. It does not route, template, authenticate or store. It has no
-opinion about what your application does with a file — only about what happens to the
-process that touches it.
+**Every command runs sandboxed.** Bubblewrap, with per-tool profiles supplied by your
+application as data. No network, no devices beyond the minimum, a tmpfs for anything
+writable. The Engine builds whatever profile it is handed and holds no knowledge of any
+particular tool.
 
-It does not sandbox your application. It sandboxes the things your application shells out
-to, which is a different and more tractable problem.
+**Dependencies are managed, not assumed.** One manifest describes what your installation
+needs. `--setup` probes what is present, reports what is missing and installs what you
+allow. It understands version *windows* — take every 3.14 patch, refuse the whole 3.15
+line — and it understands architectures, so an x86-only tool reports `unsupported` on a
+Raspberry Pi instead of failing with an unreadable error.
 
----
+**A configuration that repairs itself.** Delete `config.php` entirely and
+`--config --repair` writes a working one from your template. Miss a single setting and it
+offers that setting back with the right default. An operator's own values are never
+replaced.
 
-## Getting started
+**Resource budgets that actually hold.** cgroup-backed limits on what a workload may
+consume, enforced by a manager that outlives the request that started it. Where cgroup
+delegation is unavailable — which is most NAS hardware — it says so plainly rather than
+pretending.
 
-```
-git clone <this repo> myapp
-cd myapp
-php app.php
-```
+**Network egress you control.** Requests are checked against public routability before they
+leave. Private ranges are refused unless you list them. Three ranges are refused whatever
+you configure, and that rule lives in code rather than in documentation.
 
-`app.php` is a placeholder. It is the smallest thing that satisfies the contract and
-starts — it loads the Engine, reports what it found, and exits. Replace it with your
-application. HRConvert2 puts `convertCore.php` in that spot.
-
-`Resources/config.php` holds the settings the Engine reads. Change the data locations
-first; the defaults point at `/DATA/ExampleApp`.
-
----
-
-## The contract
-
-The Engine calls twelve functions it does not define, because how an application logs,
-sanitizes or finds a binary is the application's business. All twelve are implemented in
-`app.php` well enough to start and not well enough to ship.
-
-| Function | Calls | What it owes the Engine |
-|---|---|---|
-| `purgeSensitiveMemory()` | 81 | Destroy values by reference. Never pass it a return value. |
-| `warningEntry()` | 65 | Always written, carries no number. |
-| `logEntry()` | 52 | Normal activity, suppressed when quiet. |
-| `errorEntry()` | 14 | Documented number, sometimes fatal. |
-| `sanitize()` | 13 | Remove what a value must never contain. |
-| `locateDependency()` | 4 | Find an executable. Kernel, not Engine. |
-| `readComponentVersion()` | 1 | Read a version without executing the file. |
-| `getRealPath()` `isDir()` `verifyFile()` `virusScan()` | 1 each | Filesystem answers on your terms. |
-| `fixManagedPermissions()` | 1 | Repair the host. Only the Environment Manager calls it. |
-
-Two more are handed over as **data** rather than called by name:
-
-- `$EngineSandboxProfiles` — what each sandbox profile permits, and **why**. The Engine
-  holds no knowledge of any profile.
-- `$EngineEnvironmentProvider` — the name of a function that reports on your environment.
-  The Engine checks Bubblewrap and calls whatever you named for the rest. An application
-  with no AppArmor policy is never asked about one.
-
-See [ABOUT_ENGINE_CONTRACT.txt](Documentation/ABOUT_ENGINE_CONTRACT.txt).
+**It runs on what you already have.** x86_64, ARM64, ARM. A Raspberry Pi, a NAS, a VPS, a
+rack. No container required, no daemon to register, no service to subscribe to.
 
 ---
 
-## Layout
+## How an application uses it
 
-```
-app.php                            your application goes here
-Resources/
-  config.php                       settings the Engine reads
-  Engine/
-    engine.php                     the Engine
-    engineConfig.php               Engine tuning, read before the Engine
-    Managers/
-      coreManager.php              the listener
-      resourceManager.php          budget, scaling, cleanup
-      workerManager.php            worker lifecycle
-      requestManager.php           request handling
-      environmentManager.php       root watchman, no socket, timer only
-Documentation/
+Your application names up to six functions. The Engine calls what it is given and knows
+nothing else about you.
+
+```php
+$EngineOperatorPrompt      = 'askOperator';
+$EngineConfigModelProvider = 'applicationConfigModel';
+$EngineRepairProvider      = 'fixManagedPermissions';
 ```
 
-The structure is deliberate. It mirrors where these files sit inside an application, so a
-clone drops into place rather than needing to be rearranged.
+That is the whole interface. Every one is optional — an Engine given none of them runs and
+does less, which is a floor rather than a failure. Add them as you need them.
+
+`app.php` in this repository is the smallest thing that satisfies the contract and starts.
+Run `php app.php` and it will load the Engine, report what it found on your host, and exit.
 
 ---
 
-## Reading order
+## Upgrading
 
-1. [ABOUT_ENGINE_CONTRACT.txt](Documentation/ABOUT_ENGINE_CONTRACT.txt) — what the Engine
-   requires and what it refuses to know about you.
-2. [ABOUT_NETWORK_ISOLATION.txt](Documentation/ABOUT_NETWORK_ISOLATION.txt) — how a remote
-   address is inspected, pinned and reached, **and what still gets through**.
-3. [ABOUT_ENVIRONMENT_MANAGER.txt](Documentation/ABOUT_ENVIRONMENT_MANAGER.txt) — the root
-   process, why it has no socket, and why it watches before it repairs.
-4. [ABOUT_LOGGING.txt](Documentation/ABOUT_LOGGING.txt) — the three tiers and which to use.
-5. [CODING_CONVENTIONS.txt](Documentation/CODING_CONVENTIONS.txt) — the memory rules, the
-   sandbox rule, and why comments are written the way they are.
+```
+Resources/Engine/
+  engine.php        engineConfig.php        ← copy these
+  Cores/            Managers/               ← and these
+  Contract/                                 ← leave this alone
+```
+
+Three files in `Contract/` are yours: what your application needs installed, what its
+configuration looks like, and which functions it provides. Everything else is the Engine.
+
+That is why the Engine ships *inside* an application rather than beside it. You carry the
+Engine you tested against, and a newer one arrives when you choose it — not when a package
+manager decides. Two applications built on the same Engine trade improvements by copying a
+directory.
+
+---
+
+## Design
+
+**No cookies. No database. No third-party calls. No analytics.** Not as a feature list —
+as an architectural constraint that has held since the first release, and the reason a
+self-hosted installation stays genuinely self-hosted.
+
+**Every component is version-pinned and verified before it loads.** A component whose
+version cannot be read is refused rather than trusted, because an unknown build cannot be
+cleared.
+
+**A subsystem that can fall back does so before it errors.** Try the requested thing, warn,
+try the default, warn again, and only then fail. A user who cannot read the page cannot
+report the problem.
+
+**Every value is destroyed when the code that needed it finishes.** Not left for the
+garbage collector. See `Documentation/ABOUT_DEFENSIVE_MEMORY_MANAGEMENT.md` for why.
 
 ---
 
-## Known limits
+## Requirements
 
-Stated here rather than discovered later.
-
-**A redirect to a literal IP address is not stopped.** Pinning defeats a name that resolves
-differently the second time, but an address needs no lookup. Bubblewrap cannot filter it —
-an unprivileged user namespace cannot install a packet filter, and seccomp sees a
-`connect()` argument as a number rather than the memory it points at. The fix is an egress
-filter inside the namespace; `Documentation/ABOUT_NETWORK_ISOLATION.txt` describes what was
-proved and what was not.
-
-**The Environment Manager repairs once a day, not on demand.** It looks hourly. If
-something is undoing its repair, you want an operator rather than a loop.
-
-**It has been exercised by one application.** HRConvert2 is the only thing that has run on
-it. The contract is honest about what the Engine requires, but no second application has
-tested that honesty.
+PHP 8.0 or newer. Bubblewrap for sandboxing. systemd if you want resource budgets. Both
+degrade to something honest when absent rather than failing at the point of use.
 
 ---
+
+## Status
+
+Extracted from HRConvert2, where it has been in production use. HRConvert2 remains its
+reference implementation, and a second application is being built on it now.
+
+The interface is stable enough to build against and young enough to be worth arguing with.
+If something in it is wrong for your application, that is worth hearing — the contract is
+six function names, which is a small enough surface to change well.
 
 ## License
 
-GNU GPLv3. See [LICENSE](LICENSE).
+GNU GPLv3.
+
+<3 Open-Source

@@ -1,14 +1,14 @@
 <?php
 // / -----------------------------------------------------------------------------------
 // / Copyright Information ...
-// / HRProprietary Engine, Copyright on 9/7/2026 by Justin Grimes, www.github.com/zelon88
+// / HRProprietary Engine, Copyright on 9/8/2026 by Justin Grimes, www.github.com/zelon88
 // /
 // / License Information ...
 // / This project is protected by the GNU GPLv3 Open-Source license.
 // / https://www.gnu.org/licenses/gpl-3.0.html
 // /
 // / File Information ...
-// / v3.9.2.
+// / v3.9.3.
 // / This file is a PLACEHOLDER APPLICATION. It is the smallest thing that satisfies the
 // / Engine contract & starts. Replace it with your application.
 // /
@@ -41,12 +41,14 @@ $DirSep = DIRECTORY_SEPARATOR;
 
 
 // / -----------------------------------------------------------------------------------
-// / THE TWELVE FUNCTIONS THE ENGINE REQUIRES.
-// / These are the whole contract. The Engine calls them & never defines them, because how
-// / an application logs, sanitizes or finds a binary is the application's business.
+// / WHAT THE ENGINE ASKS OF AN APPLICATION.
+// / The Engine now DEFINES sanitize, locateDependency, getExtension & describeEnvironment
+// / itself, in Cores/environmentCore.php, guarded so an application keeping its own is
+// / unharmed. Delete them here & you get the Engine's.
+// / What is left below is what the Engine cannot supply, because it depends on what your
+// / application considers a file, a log or a repair.
 // / The counts are how often the Engine calls each one, which is a fair guide to how much
 // / care each deserves.
-// / Replace every one of these. They are correct enough to start & not to ship.
 // / -----------------------------------------------------------------------------------
 
 
@@ -109,7 +111,8 @@ function purgeSensitiveMemory($failureIsFatal, &...$variables) {
 
 
 // / -----------------------------------------------------------------------------------
-// / A function to remove everything a value must never contain. 13 calls.
+// / A function to remove everything a value must never contain. 14 calls.
+// / THE ENGINE HAS ONE. Delete this & Cores/environmentCore.php supplies it.
 // / Accepts any value & whether to be strict. Returns the cleaned value & whether it was
 // / already clean, in that order.
 // / THE PLACEHOLDER IS NOT A SANITIZER. It proves the shape of the return & nothing else.
@@ -126,7 +129,9 @@ function sanitize($suppliedValue, $strictMode) {
 
 
 // / -----------------------------------------------------------------------------------
-// / A function to find an executable on this host. 4 calls.
+// / A function to find an executable on this host. 12 calls.
+// / THE ENGINE HAS ONE. Delete this & Cores/environmentCore.php supplies it, unless your
+// / boot sequence needs it before the Engine loads, which is why HRConvert2 keeps its own.
 // / Accepts the name. Returns the full path, or an empty string.
 // / This is KERNEL rather than Engine. Boot code reaches it before the Engine has loaded,
 // / so it cannot live in the Engine & has to be here.
@@ -228,6 +233,7 @@ if (!file_exists($configPath)) { print('No configuration at '.$configPath.PHP_EO
 require_once($configPath);
 
 // / The Engine configuration, read BEFORE the Engine, so its settings exist when it starts.
+// / engineConfig.php loads Contract/app-engine-config.php last, so your settings win.
 $engineConfigPath = $InstLoc.$DirSep.'Resources'.$DirSep.'Engine'.$DirSep.'engineConfig.php';
 if (file_exists($engineConfigPath)) require_once($engineConfigPath);
 
