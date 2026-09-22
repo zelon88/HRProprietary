@@ -1,0 +1,181 @@
+-----------------------------------------------------------------------------------
+COPYRIGHT INFORMATION ...
+HRProprietary Engine, Copyright on 9/4/2026 by Justin Grimes, www.github.com/zelon88
+
+LICENSE INFORMATION ...
+This project is protected by the GNU GPLv3 Open-Source license.
+https://www.gnu.org/licenses/gpl-3.0.html
+
+APPLICATION INFORMATION ...
+The HRProprietary Engine provides a coherent application environment. 
+It is bundled with an application rather than installed beside one.
+
+FILE INFORMATION ...
+v3.9.3.
+This plain text file is the contract between an application and the Engine it bundles.
+
+HARDWARE REQUIREMENTS ...
+This application requires at least a Raspberry Pi Model B+ or greater.
+This application will run on just about any x86 or x64 computer.
+
+DEPENDENCY REQUIREMENTS ...
+The Engine requires PHP. Everything else it uses, it locates at runtime and reports when it cannot find.
+
+<3 Open-Source
+-----------------------------------------------------------------------------------
+
+
+--------------------
+COMMIT 9/8/2026
+v3.9.3 - Absorb Core Manager & the Cores. The Engine owns the environment.
+
+-v3.9.3.
+-Absorb coreManager.php into the engine. Delete it.
+  -Four manager roles move to Resources/Engine/Managers, one file each.
+  -Everything shared moves to the engine. Sockets, budgets, worker registry.
+-Sandbox the Stream pipeline. Every dependency command is now sandboxed.
+  -bwrap is PID 1 in its namespace, so its identifier is the right handle after all.
+-Never give a tool a resolver. Pin the address instead.
+  -Harden the SSRF address filter. Refuse carrier NAT, multicast, IPv4-in-IPv6.
+  -curl is pinned with --resolve. FFMPEG is pinned with a hosts file.
+-Split Model, Image, SCAD & Drawing config arrays into input and output.
+  -SCAD was using array position to mean direction.
+  -Image was offering ten formats it cannot read.
+-Add five model output formats. Skip u3d, its converter is not bundled.
+-Replace su with a fork that drops privilege & cannot climb back.
+-Move socket directory ownership to -fp. The listener needs no privilege now.
+-Give dependency probes a disposable environment & directory. No more stray .cache.
+-Grow the linters to 18 checks. Negative test every one.
+  -args caught two stale cleanFiles() calls that reported failure on a good conversion.
+  -return catches a purge that empties what it was asked to store.
+-Fix redeclare(). It was purging the value it was asked to store.
+  -Broke every settings link in convertGui2 & emptied Pipeline Core's format arrays.
+-Add test tools for the address filter, redeclare & the SCAD sanitizer.
+  -Build tools in php are cli only & say so in the filename.
+-Prove the hostname where it lands, not where it came from. /etc/hosts is line based.
+-Network policy values are locals again. They were lowercase & declared global.
+-Print the dependency verdict once. The component that owns the table owns the summary.
+-Resolve the Engine contract. It named six application functions & now names none.
+  -It checks Bubblewrap & calls one provider the application declares in engineConfig.
+-Add the Environment Manager. Root, no socket, wakes on a timer & exits.
+  -Watches by default. Repair is a setting & calls the same function -fp calls.
+  -Not dispatchable. The listener is www-data & this refuses to be anything but root.
+-Fix --kill-all-workers. It called a function with no argument & died every time.
+-Delete the Wide interface. It was Original with one number changed.
+  -Interface width is now --GUI Maximum Width--, fluid between the device & that ceiling.
+-Add a playlist source URL field. An uploaded playlist has no address to resolve against.
+-Add downloading a file from a URL. Off by default. This server has no authentication.
+  -Every fetch takes the same path a playlist URL takes. Pinned, no redirects, no resolver.
+-Upgrade the bundled Dropzone to 6.2.0. autoDiscover is gone, so the instance is explicit.
+-The dropdown arrow follows the reading direction. The language pack decides.
+-The file list panel takes a colour from the scheme instead of a hardcoded cream.
+-The dropzone scrolls instead of pushing its previews over the footer.
+-Fix 92 language pack labels missing an opening quote.
+-Add --Logo URL--. The logo returns to a clean page carrying language, colour & interface.
+  -Session tokens are never put in the link. A session belongs to the browser holding it.
+-The Default file list card takes a colour from the scheme. Blue keeps white on purpose.
+-List features that are installed & switched off in -v. A gated feature is invisible.
+-PyMeshLab installs with pip. 2025.07 ships native arm64 wheels, so the x86 limit is gone.
+  -The pipeline tries an installed copy first & falls back to a bundled one.
+-Add --Version Source-- to the manifest. An entry may name a command listing what is
+ AVAILABLE, & the Engine picks the highest version inside the declared window at install
+ time rather than the build command naming one forever.
+-Python builds from Documentation/Build, like FFMPEG & ImageMagick already did. It was the
+ only source dependency carrying eight hundred characters of shell inside the manifest.
+-Add --Maximum Version-- to the dependency manifest. Every entry declared a floor & none
+ declared a ceiling, so a dependency past what this application supports reported ok &
+ then failed at the point of use.
+-Python updates within the 3.14 line & refuses to leave it. 3.14.0 was hardcoded, so no
+ security patch could ever arrive, & fetching the newest would eventually break every
+ compiled module by landing on 3.15.
+-Name pip as a dependency. A tool that installs other tools should be auditable.
+  -Verified against python3.14, not python3. They are frequently different pips.
+-Know what machine this is. detectHostArchitecture in the Engine, reported by -v.
+  -A manifest entry may name the architectures it supports, or override fields per one.
+  -RAR points at the arm build on arm. The Debian package is x86 only.
+  -PyMeshLab reports unsupported on arm rather than failing with an unreadable ImportError.
+  -Syslinux is x86 only. isohybrid has nothing to do on arm & no package provides it.
+  -A source build says it takes an hour on arm, so nobody kills one that is working.
+  -numpy asks pip for a wheel first. On arm there often is not one & it compiles.
+  -Say WHY a resource scope failed. Lingering is fixable. A kernel with no cgroup
+   delegation is not, & many NAS kernels ship that way.
+-Both scanner pipelines were never enumerated. They declared $PipelineFormats, which
+ nothing reads, & the Pipeline Core refuses a pipeline declaring no formats, which a
+ scanner does on purpose. Pinned, installed, valid & invisible.
+-Virus scanning becomes pipelines. scanner is a third pipeline kind.
+  -A scanner is chosen by NAME, not by extension. Every scanner claims every file.
+  -A scanner reports & never deletes. What happens to an infected file is the caller's.
+  -ScanCore & ClamAV ship as pipelines. --Default Virus Scanner-- picks one.
+-Correct 81 file locations in ERROR_DESCRIPTIONS.txt against where each number is actually
+ raised. The messages were right; the files had moved out from under them.
+-Errors 31009 & 31010 were each raising TWO different errors. The recursive path guard
+ reused numbers the manager errors already held. It moves to 31018 & 31019.
+-Remove 8 stale error blocks. Every number is now documented exactly once, every block
+ names the file that raises it, & nothing raised is undocumented.
+-The template no longer carries two headers & two load guards. It explains itself above a
+ copy marker, & only what is below the marker reaches a generated config.php.
+-Correct 16 stale paths across 8 documents. SetupCore, DependencyCore, depends.php,
+ coreManager & one pipelineCore all moved this release & the documentation had not.
+-Verify every --setup argument responds. All nine.
+-Restore 30 documents the working tree had been missing. An archive ships Documentation
+ as a directory, so shipping a partial one would have deleted the rest on unpack.
+-Fix the required settings check. It tested array_key_exists against GLOBALS, & a global
+ declaration creates that key as NULL before config assigns anything, so it answered yes
+ for settings the configuration never mentioned. It uses isset now.
+  -The mechanism had NEVER fired. Two settings were absent for an entire release.
+  -UsePatchedDocumentEngine added. DocumentEngineSleepTimer removed, nothing read it.
+  ---config --repair may now run against an incomplete config. It is what fixes one.
+-Split engineConfig.php the way Apache & php split a configuration. The Engine ships
+ defaults & the application drops Contract/app-engine-config.php beside it, loaded last.
+  -engineConfig.php is now the Engine's & is replaced with it. The override survives.
+  -An Engine with no override runs on defaults, names no providers & does less.
+-Move the application's two contract files into Resources/Engine/Contract. The seam is
+ visible in the tree now rather than described in a document.
+-Name the environment file environmentCore.php, matching the other Cores.
+-Add Resources/Engine/Cores/environmentCore.php. The Engine now DEFINES sanitize, locateDependency,
+ getExtension & describeEnvironment, guarded so an application keeping its own is unharmed.
+  -readComponentVersion stays in the application permanently. It verifies the Engine.
+-Record the shape this is growing toward in ABOUT_ENGINE_CONTRACT.txt. Three applications,
+ one pipeline contract, & the cookieless session mechanism as engine work in waiting.
+-Add Documentation/ABOUT_COHESION_PASS.txt. Eleven functions the Engine still calls into
+ the application for, what moves, what stays, & why logging moves LAST.
+-Add Resources/Engine/Contract/config-template.php. A real config.php at defaults, & the way an
+ application tells the Engine what its configuration looks like. Not a description of one.
+  -A missing config.php is written from it. An operator value is never replaced.
+  -The model lost 944 duplicated prose lines & went from 1271 lines to 178.
+-Move depends.php to Resources/Engine, beside the Engine that reads it.
+-The config model moves OUT of the Engine into convertCore.php. 1272 lines of this
+ application written as data, sitting in a component meant to serve any application.
+  -The Engine reads it by name through --Engine Config Model Provider--.
+  -No fallback model, ever. A wrong one would rewrite settings to another app's defaults.
+-Move Setup Core & Dependency Core into Resources/Engine/Cores.
+  -compareVersionMinimum moves to the Engine. Comparing versions is nobody's speciality.
+  -Nine askOperator calls go through the Engine. An empty answer is a refusal, so a web
+   request refuses rather than blocking for an operator who will never arrive.
+  -The data exposure block moves to the application. Apache, nginx & SVG are not engine words.
+-Write the contract for absorbing Dependency Core & Setup Core into the Engine.
+  -The config model becomes the SOURCE & config.php becomes a build artifact.
+  -149 settings declared, 105 modelled. That gap is where this release's config bugs came from.
+  -Nothing moved yet. ABOUT_ENGINE_ABSORPTION.txt says what must change first.
+-Add --Permitted Private Ranges--. An intranet resource is not an attack.
+  -Empty by default. Loopback & link local are refused whatever is listed.
+  -Every fetch from a permitted range is logged as a warning naming the range.
+-A fetched file is scanned & format checked before it is placed. An upload always was.
+  -Fetching was the way around whatever formats an administrator had enabled.
+  -The easiest way to get an unscanned file in was to ask the server to fetch one.
+  -A fetch has a byte ceiling & a per session count. An upload is bounded by the browser.
+-Document network isolation, quality control, logging, the Environment Manager.
+
+--------------------
+COMMIT 9/4/2026
+v3.9.0 - Work on engine design.
+
+-v3.9.0.
+-Build linters in 2 languages for checking the code.
+  -Compliance is now measurable and enforceable.
+  -These tests were designed to not only report what is not-compliant, but how to fix it.
+-Work on engine migration and overall design.
+-Improve logging, pipelines, convention compliance.
+-Add Python 3.14 and Numpy as managed dependencies.
+-Add support for additonal 3d model formats.
+-Update docs, add new docs.
