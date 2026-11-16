@@ -8,21 +8,16 @@
 // / https://www.gnu.org/licenses/gpl-3.0.html
 // /
 // / File Information ...
-// / v3.9.3.
+// / v4.1.3.
 // / This file is the Request Manager. It is a manager subcomponent of the Engine.
-// / The Request Manager answers a request for budget, grants a token & takes it back when the work is finished or abandoned.
+// / The Request Manager owns the only socket a worker may address. It refuses a request a
+// / worker may not issue & forwards the rest, so a budget request reaches the Resource
+// / Manager, which grants & reclaims every token, without a worker ever addressing it.
 // /
-// / A manager is a role a long lived process runs under rather than a file the application
-// / loads on demand. It has a lifetime measured in days, a socket & a place in a budget.
-// / This file holds what this role DOES. Everything any role might need is in the Engine.
-// / The sockets, the message protocol, the budget arithmetic, the worker registry & the
-// / process identity checks are all Engine machinery & are shared by every role.
-// / A second application using this Engine gets all of that unchanged & writes only the
-// / loop that is its own.
-// /
-// / This file is pinned EXACTLY by getAcceptedManagers() in the Engine & is loaded by
-// / loadEngineManager() when a process is dispatched to this role. It is never loaded on
-// / a request that is not running as this manager.
+// / A manager is a role a long lived process runs under, with a socket & a place in a budget.
+// / This file holds what the role does.
+// / The sockets, messages, budget arithmetic, worker registry & identity checks are the Engine's, shared by every role.
+// / getAcceptedManagers() pins this file exactly, & loadEngineManager() loads it only for a process in this role.
 // /
 // / See Documentation/ABOUT_MANAGERS.txt for what each role is responsible for.
 // /
@@ -32,13 +27,13 @@
 
 // / -----------------------------------------------------------------------------------
 // / A component may only be loaded by an application.
-if (!isset($CoreLoaded) or $CoreLoaded !== TRUE) die('ERROR!!! HRConvert2-35000, A manager subcomponent cannot be loaded directly!'.PHP_EOL);
+if (!isset($CoreLoaded) or $CoreLoaded !== TRUE) die('ERROR!!! Engine-35000, A manager subcomponent cannot be loaded directly!'.PHP_EOL);
 // / -----------------------------------------------------------------------------------
 
 
 // / -----------------------------------------------------------------------------------
 // / The version of this manager. Read by the Engine WITHOUT executing this file.
-$ManagerVersion = 'v3.9.3';
+$ManagerVersion = 'v4.1.3';
 // / -----------------------------------------------------------------------------------
 
 
@@ -56,6 +51,7 @@ function runRequestManager() {
   $socketPath = $coreSocket = '';
   $managerMessages = $managerConnections = $forwardedReply = $replyPayload = array();
   $messagesReceived = $messageIndex = 0;
+  $lastLogRefresh = time();
   $socketPath = buildManagerSocketPath('request-manager');
   $coreSocket = buildManagerSocketPath('core-manager');
   list ($serverIsOpen, $socketServer) = openManagerSocketServer($socketPath);
@@ -67,11 +63,13 @@ function runRequestManager() {
     $keepRunning = TRUE;
     if ($Verbose) logEntry('Request Manager is listening for worker requests on '.basename($socketPath).'.');
     while ($keepRunning) {
+      // / A manager runs for weeks, so it moves on to the logfile it should be writing now, once a minute.
+      $lastLogRefresh = refreshProcessLog($lastLogRefresh);
       list ($messagesReceived, $managerMessages, $managerConnections) = receiveManagerMessages($socketServer, 'worker', (int)$ManagerMessageBatchSize, (int)$ManagerSocketTimeout);
       $messageIndex = 0;
       while ($messageIndex < $messagesReceived) {
-        // / A worker may not issue a manager instruction. Only these three types pass.
-        if (isset($managerMessages[$messageIndex]['RequestType']) && in_array($managerMessages[$messageIndex]['RequestType'], array('budget', 'release', 'extend', 'convertloc'), TRUE)) {
+        // / A worker may not issue a manager instruction. Only these types pass.
+        if (isset($managerMessages[$messageIndex]['RequestType']) && in_array($managerMessages[$messageIndex]['RequestType'], array('budget', 'release', 'extend', 'convertloc', 'storage'), TRUE)) {
           list ($forwardWasDelivered, $forwardedReply) = sendManagerMessage($coreSocket, $managerMessages[$messageIndex], 'core', (int)$ManagerSocketTimeout * 2);
           if ($forwardWasDelivered && !empty($forwardedReply)) $replyPayload = $forwardedReply;
           else $replyPayload = array('Approved' => FALSE, 'Reason' => 'The Core Manager did not answer.'); 
@@ -83,7 +81,7 @@ function runRequestManager() {
         $messageIndex++; } }
     $RequestManagerExitedCleanly = TRUE; }
   // / Manually clean up sensitive memory. Helps to keep track of variable assignments.
-  purgeSensitiveMemory($EnableMemoryProtection, $socketServer, $serverIsOpen, $keepRunning, $forwardWasDelivered, $socketPath, $coreSocket, $managerMessages, $managerConnections, $forwardedReply, $replyPayload, $messagesReceived, $messageIndex);
+  purgeSensitiveMemory($EnableMemoryProtection, $socketServer, $serverIsOpen, $keepRunning, $forwardWasDelivered, $socketPath, $coreSocket, $managerMessages, $managerConnections, $forwardedReply, $replyPayload, $messagesReceived, $messageIndex, $lastLogRefresh);
   return $RequestManagerExitedCleanly; }
 // / -----------------------------------------------------------------------------------
 

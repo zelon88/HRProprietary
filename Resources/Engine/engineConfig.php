@@ -8,7 +8,7 @@
 // / https://www.gnu.org/licenses/gpl-3.0.html
 // /
 // / File Information ...
-// / v3.9.3.
+// / v4.2.4.
 // / This file configures the Engine for the application that bundles it.
 // /
 // / This file is NOT the administrator's configuration & is not edited by a user.
@@ -22,12 +22,18 @@
 // /   The app config.php  How this installation behaves. Set by an administrator, kept
 // /                       across an update, & the only one anybody is asked to read.
 // /
-// / This file is read BEFORE the application configuration, so an application setting of
-// / the same name wins. That ordering is deliberate. A developer sets a default here & an
-// / administrator may still override it there, where they can see it.
+// / This file is read AFTER the application configuration, & the order is not a choice.
+// / config.php is how an installation finds itself. The directory it names is verified
+// / before anything is derived from it, & the path to this file is derived from it. An
+// / installation with no config.php writes one from its template before anything else is
+// / trusted, & reads no Engine configuration while it does.
+// / So a setting here with the same name as one in config.php would win over the
+// / administrator, silently. No name is set in both. Every name this file & the contract
+// / set begins with Engine, & an application's own checks are where that is enforced.
+// / A value an administrator may change belongs in config.php & nowhere else.
 // / A value the application must NOT be able to override does not belong in a variable.
 // /
-// / It ASSIGNS VARIABLES & DOES NOTHING ELSE. No functions, no logic, no output.
+// / It assigns variables & does nothing else. No functions, no logic, no output.
 // /
 // / <3 Open-Source
 // / -----------------------------------------------------------------------------------
@@ -35,7 +41,8 @@
 
 // / -----------------------------------------------------------------------------------
 // / A component may only be loaded by an application.
-if (!isset($CoreLoaded) or $CoreLoaded !== TRUE) die('ERROR!!! HRConvert2-35000, The Engine configuration cannot be loaded directly!'.PHP_EOL);
+// / This file is the Engine's, so its guard names the Engine.
+if (!isset($CoreLoaded) or $CoreLoaded !== TRUE) die('ERROR!!! Engine-35000, The Engine configuration cannot be loaded directly!'.PHP_EOL);
 // / -----------------------------------------------------------------------------------
 
 
@@ -43,7 +50,7 @@ if (!isset($CoreLoaded) or $CoreLoaded !== TRUE) die('ERROR!!! HRConvert2-35000,
 // / The version of this configuration. Matched as a MINIMUM by the Engine, the same way
 // / an application matches its own configuration. A newer file carrying every required
 // / setting is fine, because a setting this Engine does not know is simply not read.
-$EngineConfigVersion = 'v3.9.3';
+$EngineConfigVersion = 'v4.2.4';
 // / -----------------------------------------------------------------------------------
 
 
@@ -55,8 +62,14 @@ $EngineConfigVersion = 'v3.9.3';
 // /   It appears in a log line the Engine writes on its own behalf, so that an operator
 // /   reading a log can tell which application produced it on a host running several.
 // /   Valid options are any short text string.
-// /   Default is 'HRConvert2'.
+// /   Default is 'Application'. An application sets its own in Contract/app-engine-config.php.
 $EngineApplicationName = 'Application';
+
+// /  --Engine Entry Point--
+// /   The file an application is started through. The Engine runs it to start managers & the
+// /   listener, & names it in the instructions it prints. An application sets its own in
+// /   Contract/app-engine-config.php. Default 'app.php', the Engine's own example application.
+$EngineEntryPoint = 'app.php';
 
 // /  --Engine Application Slug--
 // /   A short lowercase form of the name, safe to use in a file name or a socket path.
@@ -122,6 +135,50 @@ $EngineEnableEnvironmentValidation = TRUE;
 // /   Valid options are TRUE or FALSE.
 // /   Default is TRUE.
 $EngineEnableResourceLimits = TRUE;
+
+// /  --Engine Enable Authentication--
+// /   Usernames & passwords, the accounts behind them, & a folder each signed in user keeps.
+// /   An application that serves anonymous visitors only does not need it.
+// /   Enabling it says this application offers it. An installation still has it off until
+// /   its administrator turns it on in the application's config.php.
+// /   It needs the Email Core to confirm an address or to recover an account. Without the
+// /   Email Core, signing in with valid credentials still works, & every email that would
+// /   have been sent & every incorrect password is a warning in the log.
+// /   See Documentation/ABOUT_AUTHENTICATION.txt.
+// /   Valid options are TRUE or FALSE.
+// /   Default is FALSE.
+$EngineEnableAuthentication = FALSE;
+// / -----------------------------------------------------------------------------------
+
+
+// / -----------------------------------------------------------------------------------
+// / --Engine Email--
+// /
+// / The Email Core sends through the host's own mail system, & never connects to a mail
+// / server of its own accord. A host with no mail system sends nothing, & says so.
+// / The text below is the Engine's default. An application replaces it in its contract, &
+// / an administrator replaces the application's in config.php.
+// / Each may name {APPLICATION}, {USERNAME}, {CODE}, {MINUTES} & {ADDRESS}, & each is
+// / replaced before the email is sent. {CODE} is what the reader types into the page, &
+// / {MINUTES} is how long it may be used for.
+// / An email carries a code rather than a link, because a mail system that checks links
+// / opens each one before the reader does, & would spend a link that works once.
+// /
+// /  --Engine Email Confirmation Subject--
+// /   The subject of the email that confirms a new account's address.
+$EngineEmailConfirmationSubject = '{APPLICATION}: confirm your account';
+
+// /  --Engine Email Confirmation Body--
+// /   The text of the email that confirms a new account's address.
+$EngineEmailConfirmationBody = "Hello {USERNAME},\n\nYour confirmation code for {APPLICATION} is {CODE}\n\nEnter it on the page where you created your account. It can be used for {MINUTES} minutes.\n\nIf you did not create an account at {ADDRESS}, you can ignore this email.\n";
+
+// /  --Engine Email Recovery Subject--
+// /   The subject of the email that lets the owner of an account choose a new password.
+$EngineEmailRecoverySubject = '{APPLICATION}: recover your account';
+
+// /  --Engine Email Recovery Body--
+// /   The text of the email that lets the owner of an account choose a new password.
+$EngineEmailRecoveryBody = "Hello {USERNAME},\n\nYour recovery code for {APPLICATION} is {CODE}\n\nEnter it on the page where you asked to recover your account, with the new password you want. It can be used for {MINUTES} minutes.\n\nIf you did not ask to recover an account at {ADDRESS}, you can ignore this email. Your password has not changed.\n";
 // / -----------------------------------------------------------------------------------
 
 
@@ -210,8 +267,8 @@ $EnginePerWorkerLogFiles = FALSE;
 // / -----------------------------------------------------------------------------------
 // /  --Engine Environment Provider--
 // /   The name of an application function that reports on THIS application's environment.
-// /   The Engine checks what the Engine provides, which is Bubblewrap & nothing else. Every
-// /   other check an installation wants belongs to the application that wants it.
+// /   The Engine checks what the Engine provides, which is Bubblewrap, the bootstrap script & what the web server serves.
+// /   Every other check an installation wants belongs to the application that wants it.
 // /   The named function accepts nothing & returns a readiness boolean & a list of findings,
 // /   each finding an array of Check, Status & Detail. The Engine appends them to its own.
 // /   Leave it empty & only the Engine's own checks run, which is correct rather than
@@ -221,27 +278,21 @@ $EnginePerWorkerLogFiles = FALSE;
 $EngineEnvironmentProvider = '';
 
 // /  --Engine Operator Prompt--
-// /   The name of a function that asks a human a question & returns their answer.
-// /   The Engine has work that must not proceed unasked, & it has no idea how this
-// /   application talks to anybody. A command line reads a line. A web request has no
-// /   operator at all & must refuse rather than block waiting for one.
-// /   An application that names nothing gets a REFUSAL for every such question, which is
-// /   the safe answer. Nothing destructive happens because nobody could be asked.
+// /   The name of a function that asks a human a question & returns their answer, for an
+// /   application that reaches its operator some other way than a terminal.
+// /   The Engine has work that must not proceed unasked. An application that names nothing
+// /   is asked on the terminal by the Engine itself, & a web request, which has no operator,
+// /   gets a REFUSAL for every such question rather than blocking. A refusal is the safe
+// /   answer. Nothing destructive happens because nobody could be asked.
 $EngineOperatorPrompt = '';
 
-// /  --Engine Data Policy Provider--
-// /   The name of a function reporting whether this application's data is exposed.
-// /   Whether a data tree is reachable by a web server is a question about an application
-// /   that HAS a web server. An engine cannot know, & an application without one has no
-// /   equivalent question to answer.
-// /   It returns display rows the same shape the environment provider returns, & the
-// /   Engine prints what it is given without understanding any of it.
-// /   Naming nothing means the section is not shown.
-$EngineDataPolicyProvider = '';
+// /  --Engine Data Policy Provider-- is retired.
+// /   The Engine reports the exposure of every location the contract gives the served role itself.
+// /   A contract that still names one is not read.
 
 // /  --Engine Config Model Provider--
 // /   The name of a function returning this application's configuration model.
-// /   THE MODEL IS THE CONFIGURATION & IT BELONGS TO THE APPLICATION. It names every
+// /   The model is the configuration & it belongs to the application. It names every
 // /   section, setting, type, default & the prose explaining each one. An engine that
 // /   carried it would be an engine that knows this application has a
 // /   --Supported File Format Information-- section, which is exactly the knowledge that
@@ -249,34 +300,54 @@ $EngineDataPolicyProvider = '';
 // /   An application that names nothing gets a config utility that can still back up,
 // /   view & verify a file, & cannot repair, reset or generate one. That degradation is
 // /   correct. Repairing a setting means knowing what it should be.
-// /   THERE IS NO FALLBACK MODEL & there must never be. A wrong model would rewrite an
+// /   There is no fallback model & there must never be. A wrong model would rewrite an
 // /   installation's settings to another application's defaults, which is worse than
 // /   refusing to do anything at all.
 $EngineConfigModelProvider = '';
 
-// /  --Engine Config Template--
-// /   The file this application uses to say what its configuration looks like.
-// /   It is a real config.php at DEFAULT VALUES rather than a description of one, so the
-// /   Engine reads it with the same parser it reads a live configuration with.
-// /   A path with no leading separator is taken as relative to Resources.
-// /   A missing config.php is written from it. A repair adds whatever it holds that a
-// /   live configuration lacks. AN OPERATOR VALUE IS NEVER REPLACED by a default in it.
-// /   An application naming none cannot have a configuration written for it, & is told so
-// /   rather than being given somebody else's defaults.
-$EngineConfigTemplate = '';
+// /  --Engine Operation Provider--
+// /   The name of a function returning the operations a workflow may run, & the kinds of file a step may name.
+// /   The Workflow Core runs what it is handed & knows nothing else about any of it.
+// /   The named function accepts nothing & returns an array holding Operations & FileTypes.
+// /   See Documentation/ABOUT_WORKFLOWS.txt for what each operation declares.
+// /   An application that names nothing has no workflows, which is correct rather than degraded.
+$EngineOperationProvider = '';
+
+// /  --Engine Shipped Workflows--
+// /   The folder inside the installation that holds the workflows a release ships, relative to it.
+// /   An application that names none ships no workflows, & an administrator may still install some.
+$EngineShippedWorkflows = '';
+
+// /  --Engine Setting Defaults--
+// /   The defaults an application gives the Engine's own settings, where the Engine's would
+// /   not do, keyed by setting & written as config.php writes a value, so a string carries
+// /   its quotes. The settings, their documentation & their defaults are the Engine's, in
+// /   Resources/Engine/config-template.php, the Engine's half of the configuration template.
+// /   The application's half is always Resources/Contract/config-template.php, & the kernel
+// /   reads both by those names before this file is loaded, so neither is named here.
+// /   A default given here replaces only the value, in a config.php written from the
+// /   templates & in what a reset writes. A setting written across several lines, as an
+// /   array is, is replaced whole. Only the Engine's settings are given one, & check thirteen
+// /   of hrconvert2-check.py reports a default named for any other.
+// /   An application names itself & its folders here.
+// /   Leave it empty & every setting of the Engine's has the Engine's default.
+$EngineSettingDefaults = array();
 
 // /  --Application Argument Handler--
 // /   The name of a function that handles this application's own command line
 // /   arguments. Every argument beginning --app is handed to it untouched.
-// /   THE ENGINE OWNS EVERY OTHER ARGUMENT. Setup, configuration, the managers, the
+// /   The Engine owns every other argument. Setup, configuration, the managers, the
 // /   listener, cleanup & self update are true of any application of this shape.
-// /   A PREFIX RATHER THAN A REGISTRY OF NAMES. A registry means the Engine must ask
+// /   It is a prefix rather than a registry of names. A registry means the Engine must ask
 // /   the application what it accepts before it can report an unknown argument, & an
 // /   application that answers badly makes the Engine report nonsense. A prefix needs
 // /   no negotiation. Everything --app is the application's & everything else is not.
 // /   It is checked BEFORE any engine argument, so an application argument can never
 // /   collide with an engine one however many are added later.
 // /   The handler receives the command, its =target & a second positional argument.
+// /   The command arrives lowercased, like every command. The two values arrive exactly as
+// /   typed, because an application's values may be paths. Its return value is not read
+// /   yet, so a handled argument exits 0.
 // /   An application that names none is told plainly that it accepts no --app command.
 $EngineApplicationArgumentHandler = '';
 
@@ -312,17 +383,10 @@ $EngineAllowIncompleteDepsUpdate = FALSE;
 // /  --Engine Protect Hosted Locations--
 // /   Whether every location this application declares as HOSTED is given a document root
 // /   protection page.
-// /   A directory a web server can reach & that has no index will LIST ITSELF on most
-// /   default configurations. Every file in it, to anybody who asks for the directory.
-// /   That is one misconfigured AllowOverride away on any installation & is not something
-// /   to leave to a server directive nobody checked.
-// /   The page is generated rather than copied, so it exists even on an installation
-// /   missing whatever file used to be copied from.
-// /   IT IS A SECOND LAYER & NOT THE FIRST. The first is the server refusing to serve the
-// /   directory at all. This is what stands when that refusal is not in place, which is
-// /   the case worth planning for because it is the case nobody notices.
-// /   Default TRUE. Writing an index file into a directory this application already
-// /   created costs nothing & the failure it prevents is a directory listing of user data.
+// /   A directory a web server can reach that has no index lists every file in it on most default configurations.
+// /   The page is generated rather than copied, so it exists on every installation.
+// /   It is a second layer. The first is the server refusing to serve the directory at all.
+// /   Default TRUE, because an index file costs nothing & the failure it prevents is a listing of user data.
 $EngineProtectHostedLocations = TRUE;
 
 // /  --Engine Active Surface--
@@ -330,17 +394,121 @@ $EngineProtectHostedLocations = TRUE;
 // /   A pipeline declares which surfaces it may be reached from & this is what that is
 // /   compared against. A pipeline that permits only web is refused from a terminal, & one
 // /   that permits only cli is refused from a browser.
-// /   AN EMPTY VALUE ENFORCES NOTHING, which is what an application that has not wired
-// /   this up gets. It is set by the application at boot once it knows how it was reached,
-// /   because the Engine cannot know that. A CLI invocation & an HTTP request reach the
-// /   same file.
+// /   An empty value enforces nothing, which is what a process that has not read its command
+// /   line yet gets. It is set by the kernel's runCommandLine() once it knows how the application
+// /   was reached, because the Engine cannot know that. A CLI invocation & an HTTP request reach
+// /   the same file.
 $EngineActiveSurface = '';
 
 // /  --Engine Repair Provider--
-// /   The name of a function that repairs whatever this application manages.
-// /   Already read by the Environment Manager. Setup Core uses the same seam, so there is
-// /   one place an application declares how it fixes itself rather than two.
+// /   Optional. The name of a function that repairs whatever else this application keeps,
+// /   beyond what the Engine's own repair covers. The Engine's repairInstallation runs it as
+// /   root, before it verifies the environment, for -fp, --setup & the Environment Manager
+// /   alike, so there is one place an application declares how it fixes itself.
+// /   The named function accepts nothing & returns a success boolean & a count of what it corrected.
+// /   Leave it empty & the Engine's repair is the whole of the repair.
 $EngineRepairProvider = '';
+
+// /  --Engine Report Provider--
+// /   The name of a function that gives the report -v prints what only this application
+// /   knows. The Engine prints the report itself, & places what the function returns among
+// /   its own sections. The function accepts nothing & returns rows & titled sections keyed by
+// /   where each goes: Dependencies, DependencyNotes, SectionsAfterDependencies, SwitchedOff,
+// /   SectionsAfterSwitchedOff & SectionsAfterResources. A row is a Label, a Text & whether it
+// /   Failed. A switched off feature is a pair, the feature & the setting that switches it on.
+// /   Leave it empty & the report carries the Engine's sections alone.
+$EngineReportProvider = '';
+
+// /  --Engine Help Provider--
+// /   The name of a function that gives the help -h prints what only this application knows.
+// /   The Engine prints the help itself, with every command of its own. The function accepts nothing &
+// /   returns Description, the line printed under the application's name, Arguments, lines for the
+// /   application's own arguments printed after the Engine's, Sections, titled lines printed after the
+// /   Engine's, & Address, the line printed last. Each is optional.
+// /   Leave it empty & the help lists the Engine's commands alone.
+$EngineHelpProvider = '';
+
+// /  --Engine Sandbox Provider--
+// /   The name of a function that returns the sandbox profiles this application's tools run under,
+// /   keyed by profile name. The Engine asks for them as it starts & assembles a sandbox from each,
+// /   & knows nothing about any tool a profile names, because a profile is data.
+// /   A name that is declared & not defined is a warning.
+// /   Leave it empty & the application declares no profile of its own.
+$EngineSandboxProvider = '';
+
+// /  --Engine Session Folders--
+// /   The folders every session holds for the application's own tools, beside the Engine's StreamTemp.
+// /   The Engine makes each with the session, never sweeps one at the root of a data location, & gives
+// /   each a global of the same name holding its path, so each must be a name a global can carry.
+// /   Leave it empty & a session holds the Engine's folders alone.
+$EngineSessionFolders = array();
+
+// /  --Engine Policy Checks--
+// /   The policies an application keeps on the host, beside the Engine's own sandbox
+// /   profile, by name. Each names the function that checks it as 'Check', & the label its
+// /   line carries in an environment report as 'Finding'. A check accepts whether it may
+// /   repair & returns a validity boolean & a status word, as verifySandboxPolicy() does.
+// /   The Engine reports each with its own findings & repairs each with its own policies.
+// /   Leave it empty & the sandbox profile is the only policy checked.
+$EnginePolicyChecks = array();
+
+// /  --Engine Log Provider--
+// /   The name of a function that moves a process on to the logfile it should be writing now.
+// /   The application names its logfiles, by date & by size, & a request names one as it starts.
+// /   A manager runs for weeks, so every manager loop asks this once a minute.
+// /   The named function accepts nothing & returns whether a logfile is in use & its path.
+// /   Leave it empty & a manager keeps the logfile it started with.
+$EngineLogProvider = '';
+
+// /  --Engine Accepted Pipelines--
+// /   Which pipeline folders under Resources/Pipelines this application accepts, each
+// /   pinned to the exact version its pipelineConfig.php must report.
+// /   This is an allowlist. A folder that is not named here is never read, never required & never enumerated.
+// /   A directory scan would hand code execution to anybody able to write a folder, & this list keeps one inert.
+// /   It is the application's data, so the Engine's default accepts nothing.
+// /   A key must be a plain folder name & a value a version such as v3.9.6. An entry that
+// /   is neither is refused with a warning & the others are still accepted.
+$EngineAcceptedPipelines = array();
+
+// /  --Engine Accepted Shared Modules--
+// /   Which files under Resources/Pipelines/Shared a pipeline may load, each pinned to the
+// /   exact version the module must report. An allowlist for the same reason as above.
+// /   A key must be a plain file name ending .php & a value a version.
+$EngineAcceptedSharedModules = array();
+
+// /  --Engine Setting Names--
+// /   Which of the application's own settings each shared name reads, so the Engine & the
+// /   Pipeline Core never name one application's settings. A shared name the application
+// /   does not map reads the default the shared layer chose for it.
+// /   FormatDetectionType, WarnOnCapabilityMismatch, DefaultScanner & RequireResourceAwareness are read.
+$EngineSettingNames = array();
+
+
+// / -----------------------------------------------------------------------------------
+// / --Engine Manager Timing--
+// /
+// / Four names here do not begin with Engine, because every manager & the Engine read them by the
+// / names they had while the application set them, which it did until v4.2.4. Nothing an
+// / administrator sets has any of them, so none shadows a setting in config.php.
+// /
+// /  --Manager Socket Timeout--
+// /   How many seconds a manager or a worker waits on a manager's socket before it gives up.
+// /   A request waits three times this long for the Request Manager's answer.
+$ManagerSocketTimeout = 2;
+
+// /  --Manager Message Batch Size--
+// /   How many messages a manager takes from its socket in one pass of its loop.
+$ManagerMessageBatchSize = 32;
+
+// /  --Manager Message Skew--
+// /   How many seconds a message's clock may differ from the manager's before it is refused as stale.
+$ManagerMessageSkew = 30;
+
+// /  --Startup Key Window--
+// /   How many seconds one startup key lasts. A key is accepted for the window it was made in
+// /   & the one before, & a key file older than three windows is removed.
+$StartupKeyWindow = 10;
+// / -----------------------------------------------------------------------------------
 
 
 // / -----------------------------------------------------------------------------------
@@ -356,8 +524,8 @@ $EngineRepairProvider = '';
 // /
 // /   Set this to 'work-downward' for an application where a privileged process hands
 // /   tasks to less privileged workers. A scanner dispatching workers is this shape.
-// /   Nothing untrusted ever needs to talk to anything privileged, so NO LISTENING SOCKET
-// /   IS OPENED AT ALL. A worker takes its instructions from how it was started, does the
+// /   Nothing untrusted ever needs to talk to anything privileged, so no listening socket
+// /   is opened at all. A worker takes its instructions from how it was started, does the
 // /   work & exits, & the result is an exit code & a file the parent already owns.
 // /
 // /   The second shape is strictly safer & is safer because it is one way.
@@ -395,13 +563,12 @@ $EngineStrictContract = FALSE;
 // / sets what it needs & leaves the rest alone, the way a package ships a configuration &
 // / the thing being configured drops one beside it.
 // /
-// / This file belongs to the ENGINE & is replaced wholesale when a newer Engine arrives.
-// / The override belongs to the APPLICATION & survives that. Before the split an upgrade
-// / meant reading this file line by line to find which values were the application's.
+// / This file belongs to the Engine & is replaced wholesale when a newer Engine arrives.
+// / The override belongs to the application & survives that.
 // /
-// / An application with no override runs on these defaults, names no providers, & does
-// / less. That is the correct degradation rather than a failure.
-$engineApplicationOverride = dirname(__FILE__).DIRECTORY_SEPARATOR.'Contract'.DIRECTORY_SEPARATOR.'app-engine-config.php';
+// / An application with no override runs on these defaults, names no providers, & does less, which is the correct degradation.
+// / The override is found in the application's contract at Resources/Contract, beside this directory & not inside it.
+$engineApplicationOverride = contractPath('app-engine-config.php');
 if (file_exists($engineApplicationOverride)) require_once($engineApplicationOverride);
 // / -----------------------------------------------------------------------------------
 ?>

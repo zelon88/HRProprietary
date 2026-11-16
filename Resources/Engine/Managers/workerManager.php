@@ -8,21 +8,15 @@
 // / https://www.gnu.org/licenses/gpl-3.0.html
 // /
 // / File Information ...
-// / v3.9.3.
+// / v4.0.8.
 // / This file is the Worker Manager. It is a manager subcomponent of the Engine.
-// / The Worker Manager tracks live workers & terminates one that has outlived its expected runtime.
+// / The Worker Manager ends the worker it is told to end. The Resource Manager keeps the
+// / worker registry & finds a worker that has outlived its expected runtime.
 // /
-// / A manager is a role a long lived process runs under rather than a file the application
-// / loads on demand. It has a lifetime measured in days, a socket & a place in a budget.
-// / This file holds what this role DOES. Everything any role might need is in the Engine.
-// / The sockets, the message protocol, the budget arithmetic, the worker registry & the
-// / process identity checks are all Engine machinery & are shared by every role.
-// / A second application using this Engine gets all of that unchanged & writes only the
-// / loop that is its own.
-// /
-// / This file is pinned EXACTLY by getAcceptedManagers() in the Engine & is loaded by
-// / loadEngineManager() when a process is dispatched to this role. It is never loaded on
-// / a request that is not running as this manager.
+// / A manager is a role a long lived process runs under, with a socket & a place in a budget.
+// / This file holds what the role does.
+// / The sockets, messages, budget arithmetic, worker registry & identity checks are the Engine's, shared by every role.
+// / getAcceptedManagers() pins this file exactly, & loadEngineManager() loads it only for a process in this role.
 // /
 // / See Documentation/ABOUT_MANAGERS.txt for what each role is responsible for.
 // /
@@ -32,13 +26,13 @@
 
 // / -----------------------------------------------------------------------------------
 // / A component may only be loaded by an application.
-if (!isset($CoreLoaded) or $CoreLoaded !== TRUE) die('ERROR!!! HRConvert2-35000, A manager subcomponent cannot be loaded directly!'.PHP_EOL);
+if (!isset($CoreLoaded) or $CoreLoaded !== TRUE) die('ERROR!!! Engine-35000, A manager subcomponent cannot be loaded directly!'.PHP_EOL);
 // / -----------------------------------------------------------------------------------
 
 
 // / -----------------------------------------------------------------------------------
 // / The version of this manager. Read by the Engine WITHOUT executing this file.
-$ManagerVersion = 'v3.9.3';
+$ManagerVersion = 'v4.0.8';
 // / -----------------------------------------------------------------------------------
 
 
@@ -56,6 +50,7 @@ function runWorkerManager() {
   $socketPath = '';
   $managerMessages = $managerConnections = $replyPayload = array();
   $messagesReceived = $messageIndex = $killedCount = 0;
+  $lastLogRefresh = time();
   $socketPath = buildManagerSocketPath('worker-manager');
   list ($serverIsOpen, $socketServer) = openManagerSocketServer($socketPath);
   if (!$serverIsOpen) errorEntry('The Worker Manager could not open its socket!', 31003, TRUE);
@@ -63,6 +58,8 @@ function runWorkerManager() {
     logEntry('Worker Manager started.');
     $keepRunning = TRUE;
     while ($keepRunning) {
+      // / A manager runs for weeks, so it moves on to the logfile it should be writing now, once a minute.
+      $lastLogRefresh = refreshProcessLog($lastLogRefresh);
       list ($messagesReceived, $managerMessages, $managerConnections) = receiveManagerMessages($socketServer, 'internal', (int)$ManagerMessageBatchSize, (int)$ManagerSocketTimeout);
       $messageIndex = 0;
       while ($messageIndex < $messagesReceived) {
@@ -79,7 +76,7 @@ function runWorkerManager() {
         $messageIndex++; } }
     $WorkerManagerExitedCleanly = TRUE; }
   // / Manually clean up sensitive memory. Helps to keep track of variable assignments.
-  purgeSensitiveMemory($EnableMemoryProtection, $socketServer, $serverIsOpen, $keepRunning, $processWasTerminated, $socketPath, $managerMessages, $managerConnections, $replyPayload, $messagesReceived, $messageIndex, $killedCount);
+  purgeSensitiveMemory($EnableMemoryProtection, $socketServer, $serverIsOpen, $keepRunning, $processWasTerminated, $socketPath, $managerMessages, $managerConnections, $replyPayload, $messagesReceived, $messageIndex, $killedCount, $lastLogRefresh);
   return $WorkerManagerExitedCleanly; }
 // / -----------------------------------------------------------------------------------
 
