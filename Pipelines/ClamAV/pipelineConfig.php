@@ -1,0 +1,84 @@
+<?php
+// / -----------------------------------------------------------------------------------
+// / Copyright Information ...
+// / HRConvert2, Copyright on 9/22/2026 by Justin Grimes, www.github.com/zelon88
+// /
+// / License Information ...
+// / This project is protected by the GNU GPLv3 Open-Source license.
+// / https://www.gnu.org/licenses/gpl-3.0.html
+// /
+// / File Information ...
+// / v4.2.1.
+// / This file declares the ClamAV scanner pipeline.
+// /
+// / A SCANNER declares no input or output formats & that is not an omission.
+// / Every scanner claims every file, so there is nothing for an extension to decide. An
+// / administrator picks a scanner by name in config.php & a user may pick another if the
+// / interface offers one.
+// /
+// / <3 Open-Source
+// / -----------------------------------------------------------------------------------
+
+
+// / -----------------------------------------------------------------------------------
+// / A component may only be loaded by the core.
+if (!isset($CoreLoaded) or $CoreLoaded !== TRUE) die('ERROR!!! HRConvert2-34000, A pipeline configuration cannot be loaded directly!');
+// / -----------------------------------------------------------------------------------
+
+
+// / -----------------------------------------------------------------------------------
+// / The version of this pipeline folder. Read without executing this file, then matched
+// / exactly against the pin in getAcceptedPipelines().
+$PipelineVersion = 'v4.2.1';
+
+// / A scanner inspects a file & reports on it. It changes nothing.
+$PipelineKind = 'scanner';
+
+// / The name an administrator writes in --Default Virus Scanner--, & the name a user
+// / selects. Matched case insensitively, so clamav & ClamAV are the same scanner.
+$PipelineFamily = 'ClamAV';
+
+$PipelineDisplayName = 'ClamAV';
+
+// / Priority orders conversion pipelines that claim the same formats. A scanner is chosen
+// / by name & never competes, so this only decides the order scanners are listed in.
+$PipelinePriority = 100;
+
+$PipelineEntryPoint = 'scanWithClamAV';
+
+// / A scanner declares no formats. See the note in the header.
+// / A scanner declares EMPTY capabilities & the Pipeline Core exempts it from the rule
+// / that a pipeline must read & write something. Every scanner claims every file.
+$Capabilities = array(
+  'Input' => array(),
+  'Output' => array());
+
+// / The subsystem this belongs to, for the readiness report.
+$PipelineSubsystem = 'Security';
+
+// / This says where the pipeline may be reached from. A scanner is useful from a terminal & from
+// / a schedule, not only from a browser, so it declares cli as well.
+// / Declaring nothing means web & gui.
+// / A pipeline that wants a command line must say so.
+$PipelineUsage = array('cli', 'web', 'gui');
+
+// / A scanner takes no request fields. It is handed paths by the caller & nothing else.
+$PipelineRequestFields = array();
+
+$PipelineSharedModules = array();
+// / -----------------------------------------------------------------------------------
+
+
+// / -----------------------------------------------------------------------------------
+// / What this pipeline shells out to. Names must match the manifest exactly.
+$PipelineDependencies = array('ClamAV');
+
+// / No pair is excluded, because no pair exists.
+$PipelineExclude = array();
+
+// / The tools this pipeline cannot run without, by their names in depends.php, from v4.2.1.
+// / A pipeline is offered only where one tool of each entry is installed. An array in it names tools any one of which will do.
+// / This scanner is clamscan, so it is not offered without it, & all leaves it out.
+$PipelineRequiredDependencies = array('ClamAV');
+// / -----------------------------------------------------------------------------------
+?>

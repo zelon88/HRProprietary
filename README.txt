@@ -26,17 +26,26 @@ What the Engine itself needs is Resources/Engine/depends.php, & --setup installs
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 --What This Kit Holds--
 
-Every file here but this one is from HRConvert2 v4.2.4's release tree, unchanged.
+Every file here but this one is from an HRConvert2 release tree, unchanged. Pipelines/, ScanCore/
+& hrconvert2-release-fetch.sh are v4.2.6's, & everything else is v4.2.4's.
 
   Resources/Kernel/              The kernel, v4.2.4. Copied into every application unchanged.
   Resources/Engine/              The Engine, v4.2.4. engine.php, engineConfig.php, the Engine's half
                                  of config.php in config-template.php, the Engine's half of the
                                  dependency manifest in depends.php, every Core & every Manager.
                                  Copied into every application unchanged.
+  Pipelines/                     Every pipeline HRConvert2 v4.2.6 ships & the shared modules they
+                                 load, each folder as HRConvert2 holds it in Resources/Pipelines.
+                                 Copied into Resources/Pipelines a folder at a time. See
+                                 --The Pipeline Library--.
+  ScanCore/                      The ScanCore program the ScanCore pipeline runs. Copied into
+                                 Resources/ScanCore with that pipeline.
   Example/HRConvert2/            HRConvert2's entry point, version file, contract & bootstrap script.
                                  The worked example. Read it, & copy none of it whole.
   Documentation/                 The Engine's documents & the conventions the code is written to.
-  Documentation/Build/           The two code checkers & the documentation checker.
+  Documentation/Build/           The two code checkers, the documentation checker &
+                                 hrconvert2-release-fetch.sh, which fetches & checks the release
+                                 binary a manifest entry names, as four pipeline tools' entries do.
   LICENSE                        The GNU GPLv3.
 
 Documentation/ABOUT_ENGINE_CONTRACT.txt is the authority on everything below. This file is the
@@ -156,9 +165,111 @@ through $EngineSettingNames as AllowedExtensions, & --File Operation Retry Count
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
+--The Pipeline Library--
+
+Pipelines/ holds every pipeline HRConvert2 v4.2.6 ships, & Shared/, the modules several of them load.
+A pipeline is adopted whole. Its folder carries its code, its declarations in pipelineConfig.php, a
+README.md written from them & its approval record, DEPENDENCY_APPROVALS.txt. pipelineConfig.php
+declares its version, its kind, its entry point, its subsystem, its shared modules, its tools & the
+block of error numbers that belongs to it. Documentation/ABOUT_PIPELINE_COMPONENTS.txt says what each
+declaration means.
+
+Every Engine function a pipeline calls is in this kit's Engine. Every folder but the seven v4.2.5 &
+v4.2.6 added or changed is byte for byte the one HRConvert2 v4.2.4 shipped on this Engine. Those seven,
+Data, Email, LaTeX, Markup, Trace, SVG & Graph, & Shared/workFolder.php were run on this kit's kernel &
+Engine, in HRConvert2 v4.2.6's tree in place of its own, & converted as they do on v4.2.6, but where
+what Engine v4.2.4 lacks, below, stopped them.
+
+An application adopts a pipeline in seven steps.
+
+  1. Copy its folder into Resources/Pipelines, with Pipelines/index.html, every module its
+     $PipelineSharedModules names from Pipelines/Shared, & Shared/index.html. Scan runs the scanner
+     pipelines, so it is adopted with ClamAV, ScanCore or both. ScanCore is adopted with ScanCore/,
+     copied into Resources/ScanCore.
+  2. Pin it. The folder's name & its $PipelineVersion go in $EngineAcceptedPipelines, & each shared
+     module & its $SharedModuleVersion in $EngineAcceptedSharedModules. A folder the contract does not
+     name is never loaded.
+  3. Declare its tools. Each name in $PipelineDependencies is an entry in Resources/Contract/depends.php,
+     under the subsystem $PipelineSubsystem names. Example/HRConvert2's depends.php holds every entry
+     but the eight v4.2.5 & v4.2.6 added, Dasel, yq, XeLaTeX, Potrace, msgconvert, Pandoc, Resvg &
+     Graphviz, which HRConvert2 v4.2.6's holds.
+  4. Give it its sandbox profiles, below, in the function $EngineSandboxProvider names.
+     Example/HRConvert2's getSandboxProfiles() holds every one but the eight v4.2.5 & v4.2.6 added.
+     xelatex & pandoc read /etc/texmf, /var/lib/texmf & /var/cache/fontconfig, graphviz reads
+     /var/cache/fontconfig, & resvg, potrace, dasel, yq & msgconvert need only their operation types,
+     SVG, Trace, Data, Data & Email. graphviz's operation type is Graph.
+  5. Supply the application's functions it calls, below. Each is in Example/HRConvert2's convertCore.php.
+  6. Declare the application's settings it reads, below, in config-template.php & the configuration
+     model, & set the globals it reads, below, as convertCore.php sets them.
+  7. Add its errors to ERROR_DESCRIPTIONS.txt, as the Engine's catalogue is extended. HRConvert2 v4.2.6's
+     documents every block.
+
+How an application offers a pipeline to its users is its own logic. HRConvert2 routes its conversion
+families in applicationConversionFamilies() & its operations in applicationOperations(), which its
+contract names in $EngineOperationProvider.
+
+What each pipeline needs of the application, with its shared modules' needs counted as its own. A setting
+is named as config.php names it, a global the application sets carries its $, & a blank needs nothing.
+
+  Pipeline   Profiles                   Functions                         Settings & globals
+  Archive    archive                    findFreeOutputName                AllowBootableIsoImage, MaxExtractedSize,
+                                                                          MaxExtractedFiles, $BootableIsoArray &
+                                                                          $BootloadersDir
+  Archiver   archive                    verifyFile                        VirusScan
+  Audio      ffmpeg
+  ClamAV     clamav
+  Data       dasel yq
+  Document   poppler libreoffice
+  Drawing    dia
+  Ebook      calibre
+  Email      msgconvert
+  Extractor  archive                    placeSessionFile verifyFile       VirusScan, MaxExtractedSize, MaxExtractedFiles
+                                                                          & $DearchiveArray
+  Files
+  Graph      graphviz                                                     GraphConversionTimeout
+  Identify   imagemagick ffmpeg archive coverResolvedImageMagickPolicy
+             poppler generic            findFreeOutputName verifyFile
+  Image      imagemagick                coverResolvedImageMagickPolicy
+  LaTeX      xelatex                                                      LaTeXConversionTimeout
+  Markup     pandoc                                                       MarkupConversionTimeout
+  Metadata   mat2                       metadataOperationFormats          VirusScan
+                                        placeSessionFile verifyFile
+  Model      meshlab                                                      UsePyMeshLab
+  OCR        tesseract libreoffice      coverResolvedImageMagickPolicy    VirusScan
+                                        verifyFile
+  PDF        poppler                    placeSessionFile verifyFile       VirusScan, MaxExtractedSize, MaxExtractedFiles
+  SVG        inkscape resvg
+  Scad       openscad                   getFiles                          SCADConversionTimeout,
+                                                                          AllowSCADIncludeResolution & $ScadTemp, a
+                                                                          folder $EngineSessionFolders names
+  Scan                                  verifyFile                        VirusScan
+  ScanCore   scancore                                                     ScanCoreChunkSize, ScanCoreMemoryLimit,
+                                                                          ScanCoreDebug & ScanCoreVerbose
+  Stream     ffmpeg                                                       StreamInspectionLayers,
+                                                                          StreamInspectionFilesPerLayer,
+                                                                          DefaultStreamInspectionForfeitAction,
+                                                                          SupportedConversionTypes, $StreamArray &
+                                                                          $StreamBaseURL
+  Subtitle   ffmpeg
+  Trace      imagemagick potrace        coverResolvedImageMagickPolicy
+  Video      ffmpeg
+
+WHAT ENGINE v4.2.4 LACKS. HRConvert2 v4.2.5 changed its Dependency & Setup Cores three times, & the
+pipelines v4.2.5 added meet all three. Each reaches this kit when its Engine is reconciled.
+  --install-depends takes a program on the host that answers with no version for the tool, where it
+  should make the application's own copy. Ubuntu's dasel 2 & its Python yq are such programs, so on a
+  host that carries either, Dasel & yq are not fetched, & the Data pipeline refuses every file with
+  error 44001, because the Dasel it finds is unidentifiable.
+  --config --repair does not add a missing setting to a section it only displays. HRConvert2's format
+  lists are such a section, so a config.php written before an application adopts a family is not
+  given that family's lists, & is refused until they are added by hand.
+  Dependency Core says it builds an own copy that it fetches, because it predates the release Method.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
 --What Still Reads As HRConvert2's--
 
-Nothing a new application copies. Two things it will notice.
+Nothing a new application copies but the pipelines it adopts. Three things it will notice.
 
 THE ENGINE'S HALF OF config.php IS WRITTEN IN HRCONVERT2'S WORDS WHERE A SETTING WAS FIRST WRITTEN FOR IT.
 The stream settings, the default virus scanner & the per conversion limits, whose default names
@@ -167,6 +278,11 @@ written across several lines included, & the prose is shared.
 
 THE CHECKERS CARRY HRCONVERT2'S NAME. They are hrconvert2-check.py, hrconvert2-check.sh &
 hrconvert2-doccheck.py, & they check whichever application the contract describes. See --The Checkers--.
+
+THE PIPELINES ARE HRCONVERT2'S. Each file's header names HRConvert2, & each guard dies with
+HRConvert2-34000, or HRConvert2-2 in the Files pipeline, when a file is loaded directly. Their code names
+no application, & an error one raises carries the adopting application's name, as every error does. An
+application keeps the headers, & may give the guards its own name with the same numbers.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -180,7 +296,8 @@ Each is run from the application root, & each says what it cannot see above the 
 
 Each reads the entry point & the application's model from the contract, $EngineEntryPoint &
 $EngineConfigModelProvider, so a new application runs them unchanged.
---no-scancore leaves out a bundled ScanCore, which a new application does not have.
+--no-scancore leaves out a bundled ScanCore, which a new application has only where it adopts the
+ScanCore pipeline.
 Documentation/ABOUT_QUALITY_CONTROL.txt says what each check is for & which fault it was written after.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -192,5 +309,6 @@ The Engine is a drop in replacement for itself. Resources/Kernel & Resources/Eng
 raised to what the new files declare. A setting a newer Engine adds arrives in its half of the template,
 so $RequiredConfigVersion is raised & php <entry point> --config --repair adds it to every config.php,
 keeping every value an administrator set. A dependency a newer Engine needs arrives in its half of the
-manifest, which it pins itself.
+manifest, which it pins itself. An adopted pipeline is upgraded the same way, its folder replaced whole &
+its pin raised to the $PipelineVersion the new folder declares.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
