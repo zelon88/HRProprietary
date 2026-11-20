@@ -10,7 +10,7 @@ APPLICATION INFORMATION ...
 The HRProprietary Engine provides a coherent application environment. It is bundled with an application rather than installed beside one.
 
 FILE INFORMATION ...
-v4.2.4.
+v4.3.1.
 This plain text file says what the Engine starter kit holds & what a new application supplies to run on it.
 
 HARDWARE REQUIREMENTS ...
@@ -26,30 +26,79 @@ What the Engine itself needs is Resources/Engine/depends.php, & --setup installs
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 --What This Kit Holds--
 
-Every file here but this one is from an HRConvert2 release tree, unchanged. Pipelines/, ScanCore/
-& hrconvert2-release-fetch.sh are v4.2.6's, & everything else is v4.2.4's.
+Every file here is from the HRConvert2 v4.3.0 release tree but those Documentation/ENGINE_CHANGELOG.txt
+names under v4.3.1. ScanCore/ & Pipelines/ moved into Resources/, where an application keeps them.
 
-  Resources/Kernel/              The kernel, v4.2.4. Copied into every application unchanged.
-  Resources/Engine/              The Engine, v4.2.4. engine.php, engineConfig.php, the Engine's half
+  Resources/Kernel/              The kernel, v4.3.1. Copied into every application unchanged.
+  Resources/Engine/              The Engine, v4.3.1. engine.php, engineConfig.php, the Engine's half
                                  of config.php in config-template.php, the Engine's half of the
-                                 dependency manifest in depends.php, every Core & every Manager.
-                                 Copied into every application unchanged.
-  Pipelines/                     Every pipeline HRConvert2 v4.2.6 ships & the shared modules they
-                                 load, each folder as HRConvert2 holds it in Resources/Pipelines.
-                                 Copied into Resources/Pipelines a folder at a time. See
-                                 --The Pipeline Library--.
-  ScanCore/                      The ScanCore program the ScanCore pipeline runs. Copied into
-                                 Resources/ScanCore with that pipeline.
-  Example/HRConvert2/            HRConvert2's entry point, version file, contract & bootstrap script.
-                                 The worked example. Read it, & copy none of it whole.
-  Documentation/                 The Engine's documents & the conventions the code is written to.
+                                 dependency manifest in depends.php, every Core, every Manager,
+                                 Sandbox/, the passwd, group & machine-id a sandbox shows, & UI/, the
+                                 protection page's template & the Engine's logo. Copied into every
+                                 application unchanged. See --This Kit's Engine--.
+  Resources/Pipelines/           Every pipeline HRConvert2 v4.3.0 ships, ClamAV & ScanCore as HRProtect
+                                 mended them, HRProtect's Quarantine, & the shared modules they load.
+                                 Copied into an application's Resources/Pipelines a folder at a time.
+                                 See --The Pipeline Library--.
+  Resources/ScanCore/            The ScanCore program the ScanCore pipeline runs, v1.9. Copied into an
+                                 application's Resources/ScanCore with that pipeline, as it is here.
+  Example/HRConvert2/            HRConvert2's entry point, version file, contract & bootstrap script,
+                                 & the build scripts its manifest names. The worked example. Read it,
+                                 & copy none of it whole. Its pins & its contract follow this kit.
+  Documentation/                 The Engine's documents, the conventions the code is written to,
+                                 ENGINE_CHANGELOG.txt, the record of every change made to the Engine
+                                 itself, & each application's record of the changes it made to its
+                                 copy, ENGINE_RECONCILIATION_HRCONVERT2.txt & _HRPROTECT.txt.
+  Documentation/Logos/           The logos README.md shows. An application does not copy them.
   Documentation/Build/           The two code checkers, the documentation checker &
                                  hrconvert2-release-fetch.sh, which fetches & checks the release
                                  binary a manifest entry names, as four pipeline tools' entries do.
+  Documentation/Build/Tests/     The Engine's own tests, the library they share & the runners that
+                                 keep them in bubblewrap, kept so an application's developer runs
+                                 them rather than writing their own. Its README.txt says how.
   LICENSE                        The GNU GPLv3.
+  README.md                      The repository's introduction.
 
 Documentation/ABOUT_ENGINE_CONTRACT.txt is the authority on everything below. This file is the
 order to do it in.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+--This Kit's Engine--
+
+THIS ENGINE IS CANON, v4.3.1, & IT RECONCILES BOTH APPLICATIONS' COPIES.
+Every application carries its own copy of the Engine, & each may change its copy & record the change
+in its own reconciliation file. The Engine's maintainer merges the copies into one Engine by hand.
+This one is the v4.2.4 kit's Engine with HRConvert2's changes to its v4.3.0, which
+ENGINE_RECONCILIATION_HRCONVERT2.txt records, & HRProtect's to its v0.0.7, which
+ENGINE_RECONCILIATION_HRPROTECT.txt records. ENGINE_CHANGELOG.txt says what v4.3.1 made of them.
+Canon is stamped plainly. An application's copy is v4.3.1r where it is canon's unchanged, & v4.3.1ur
+where the application has changed it. CODING_CONVENTIONS.txt says how a mark is compared.
+
+  The kernel                 v4.3.1     HRProtect's sanitizePath(), printableText() &
+                                        enterFolderWithoutFollowing(). An --app handler sets the exit
+                                        status, & a file the kernel opens is never handed to a command.
+  The Engine                 v4.3.1     HRConvert2's sandbox, to v4.3.0. HRProtect's worker & timers of
+                                        an application's own. One protection page, built from UI/.
+  The Setup Core             v4.3.1     HRConvert2's repair of a displayed section, & HRProtect's
+                                        timers & the folders an application declares.
+  The Workflow Core          v4.3.1     HRProtect's printing of text nobody vetted.
+  The Event Core             v4.3.1     HRProtect's, & the Engine's from here. It keeps the record of
+                                        what an application did & found.
+  The Dependency Core        v4.2.5     A Fallback may fetch a release binary, & a program that cannot
+                                        say its version is given its own copy.
+  The Environment Core       v4.3.1     Pinned by the Engine, which does not start without it. Its copies
+                                        of three kernel functions, which never loaded, are gone, & it
+                                        builds no protection page of its own.
+  Every other Core           As the v4.2.4 kit's. Pipeline v4.2.4, Authentication v4.2.3, Email
+                             v4.2.0.
+  Every manager              As the v4.2.4 kit's.
+  engineConfig.php           v4.3.1. $EngineTimerProvider & $EngineProtectionLogo are new, & five
+                             gates nothing read are gone.
+  The Engine's settings      config-template.php v4.3.1. --Record Events-- moved into it from
+                             HRProtect's half. v4.2.7 changed only the comments on --Require Sandbox--
+                             & --Require Sandbox On Docker--.
+  The Engine's manifest      As the v4.2.4 kit's, v4.2.4.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -120,8 +169,8 @@ checker hold both.
 5. THE PINS, declared in verifyInstallation(), except the kernel's, which is declared before the kernel loads.
   $RequiredKernelVersion & $RequiredEngineVersion       Exact. Moved by hand, because the build runs inside both.
   $RequiredSetupCoreVersion, $RequiredDependencyCoreVersion, $RequiredPipelineCoreVersion,
-  $RequiredWorkflowCoreVersion, $RequiredAuthenticationCoreVersion & $RequiredEmailCoreVersion
-                                                        Exact. Every Core ships with the Engine & -v reports each,
+  $RequiredWorkflowCoreVersion, $RequiredAuthenticationCoreVersion, $RequiredEmailCoreVersion
+  & $RequiredEventCoreVersion                           Exact. Every Core ships with the Engine & -v reports each,
                                                         so each is pinned whether or not the application uses it.
   $RequiredDependsVersion                               Exact, its own half of the manifest's. The Engine pins
                                                         its half itself.
@@ -136,7 +185,8 @@ checker hold both.
 6. WHAT IT ADDS TO THE ENGINE, each optional & each named in its contract.
   $EngineHelpProvider               What -h prints of its own, as applicationHelpInfo() returns it.
   $EngineReportProvider             Rows & sections -v prints in the places it leaves, as applicationVersionReport().
-  $EngineSandboxProvider            The sandbox profile of each tool it runs, as getSandboxProfiles().
+  $EngineSandboxProvider            The sandbox profile of each tool it runs, as getSandboxProfiles(). A profile
+                                    sets RequireSandbox TRUE where its tool reads a file an upload names.
   $EngineSessionFolders             The folders every session holds beyond StreamTemp. Each is a global of its
                                     own name holding its path. HRConvert2 names ScadTemp.
   $EngineApplicationArgumentHandler Every command beginning --app. HRConvert2 names none.
@@ -167,46 +217,52 @@ through $EngineSettingNames as AllowedExtensions, & --File Operation Retry Count
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 --The Pipeline Library--
 
-Pipelines/ holds every pipeline HRConvert2 v4.2.6 ships, & Shared/, the modules several of them load.
+Resources/Pipelines/ holds every pipeline HRConvert2 v4.3.0 ships, & Shared/, the modules several of
+them load, workFolder.php, libreOffice.php, ffmpegDemuxers.php & imageMagickDecoders.php.
 A pipeline is adopted whole. Its folder carries its code, its declarations in pipelineConfig.php, a
 README.md written from them & its approval record, DEPENDENCY_APPROVALS.txt. pipelineConfig.php
 declares its version, its kind, its entry point, its subsystem, its shared modules, its tools & the
 block of error numbers that belongs to it. Documentation/ABOUT_PIPELINE_COMPONENTS.txt says what each
 declaration means.
 
-Every Engine function a pipeline calls is in this kit's Engine. Every folder but the seven v4.2.5 &
-v4.2.6 added or changed is byte for byte the one HRConvert2 v4.2.4 shipped on this Engine. Those seven,
-Data, Email, LaTeX, Markup, Trace, SVG & Graph, & Shared/workFolder.php were run on this kit's kernel &
-Engine, in HRConvert2 v4.2.6's tree in place of its own, & converted as they do on v4.2.6, but where
-what Engine v4.2.4 lacks, below, stopped them.
+ClamAV & ScanCore are v4.3.1, as HRProtect mended them. ClamAV returns a verdict for every path, &
+both read what they need through applicationSetting(), so an application maps ScannerScratchFolder,
+ScanCoreMemoryLimit, ScanCoreChunkSize, ScanCoreVerbose & ScanCoreDebug in $EngineSettingNames, as
+the Example's contract does. Quarantine is HRProtect's, v4.3.1. It is handed its folder, names no
+application & runs from the command line alone.
+
+Every Engine function a pipeline calls is in this kit's Engine. Every folder is the one HRConvert2
+v4.3.0 ships on it & was tested on it, but for those three, which HRProtect v0.0.7 ships & tested.
 
 An application adopts a pipeline in seven steps.
 
-  1. Copy its folder into Resources/Pipelines, with Pipelines/index.html, every module its
-     $PipelineSharedModules names from Pipelines/Shared, & Shared/index.html. Scan runs the scanner
-     pipelines, so it is adopted with ClamAV, ScanCore or both. ScanCore is adopted with ScanCore/,
-     copied into Resources/ScanCore.
+  1. Copy its folder into the application's Resources/Pipelines, with Resources/Pipelines/index.html,
+     every module its $PipelineSharedModules names from Resources/Pipelines/Shared, &
+     Shared/index.html. Scan runs the scanner pipelines, so it is adopted with ClamAV, ScanCore or
+     both. ScanCore is adopted with Resources/ScanCore/, copied as it is.
   2. Pin it. The folder's name & its $PipelineVersion go in $EngineAcceptedPipelines, & each shared
      module & its $SharedModuleVersion in $EngineAcceptedSharedModules. A folder the contract does not
      name is never loaded.
   3. Declare its tools. Each name in $PipelineDependencies is an entry in Resources/Contract/depends.php,
-     under the subsystem $PipelineSubsystem names. Example/HRConvert2's depends.php holds every entry
-     but the eight v4.2.5 & v4.2.6 added, Dasel, yq, XeLaTeX, Potrace, msgconvert, Pandoc, Resvg &
-     Graphviz, which HRConvert2 v4.2.6's holds.
+     under the subsystem $PipelineSubsystem names. Example/HRConvert2's depends.php holds every entry.
+     An entry built by a script is adopted with the script. 7-Zip's, FFMPEG's & FFprobe's,
+     ImageMagick's & Python's are in Example/HRConvert2/Documentation/Build, where ffmpeg-build.sh
+     runs ffmpeg-build2.sh beside it. Dasel's, yq's, Pandoc's & Resvg's run
+     Documentation/Build/hrconvert2-release-fetch.sh.
   4. Give it its sandbox profiles, below, in the function $EngineSandboxProvider names.
-     Example/HRConvert2's getSandboxProfiles() holds every one but the eight v4.2.5 & v4.2.6 added.
-     xelatex & pandoc read /etc/texmf, /var/lib/texmf & /var/cache/fontconfig, graphviz reads
-     /var/cache/fontconfig, & resvg, potrace, dasel, yq & msgconvert need only their operation types,
-     SVG, Trace, Data, Data & Email. graphviz's operation type is Graph.
+     Example/HRConvert2's getSandboxProfiles() holds every one. libreoffice, calibre, inkscape, resvg,
+     dia, meshlab & ffmpeg set RequireSandbox, because each tool reads a file an upload names, so a
+     conversion that runs one is refused where no sandbox can be built. calibre shows /opt/calibre,
+     where Calibre's own installer puts it, because a sandbox does not show /opt.
   5. Supply the application's functions it calls, below. Each is in Example/HRConvert2's convertCore.php.
   6. Declare the application's settings it reads, below, in config-template.php & the configuration
      model, & set the globals it reads, below, as convertCore.php sets them.
-  7. Add its errors to ERROR_DESCRIPTIONS.txt, as the Engine's catalogue is extended. HRConvert2 v4.2.6's
-     documents every block.
+  7. Add its errors to ERROR_DESCRIPTIONS.txt, as the Engine's catalogue is extended. The catalogue in
+     this kit documents every block.
 
 How an application offers a pipeline to its users is its own logic. HRConvert2 routes its conversion
-families in applicationConversionFamilies() & its operations in applicationOperations(), which its
-contract names in $EngineOperationProvider.
+families in applicationConversionFamilies(), whose kinds conversionFamilyClaims() reads, & its
+operations in applicationOperations(), which its contract names in $EngineOperationProvider.
 
 What each pipeline needs of the application, with its shared modules' needs counted as its own. A setting
 is named as config.php names it, a global the application sets carries its $, & a blank needs nothing.
@@ -248,22 +304,12 @@ is named as config.php names it, a global the application sets carries its $, & 
   Stream     ffmpeg                                                       StreamInspectionLayers,
                                                                           StreamInspectionFilesPerLayer,
                                                                           DefaultStreamInspectionForfeitAction,
-                                                                          SupportedConversionTypes, $StreamArray &
-                                                                          $StreamBaseURL
+                                                                          SupportedConversionTypes, $StreamArray,
+                                                                          $StreamBaseURL, $MediaOutputArray &
+                                                                          $VideoOutputArray
   Subtitle   ffmpeg
   Trace      imagemagick potrace        coverResolvedImageMagickPolicy
   Video      ffmpeg
-
-WHAT ENGINE v4.2.4 LACKS. HRConvert2 v4.2.5 changed its Dependency & Setup Cores three times, & the
-pipelines v4.2.5 added meet all three. Each reaches this kit when its Engine is reconciled.
-  --install-depends takes a program on the host that answers with no version for the tool, where it
-  should make the application's own copy. Ubuntu's dasel 2 & its Python yq are such programs, so on a
-  host that carries either, Dasel & yq are not fetched, & the Data pipeline refuses every file with
-  error 44001, because the Dasel it finds is unidentifiable.
-  --config --repair does not add a missing setting to a section it only displays. HRConvert2's format
-  lists are such a section, so a config.php written before an application adopts a family is not
-  given that family's lists, & is refused until they are added by hand.
-  Dependency Core says it builds an own copy that it fetches, because it predates the release Method.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -276,8 +322,9 @@ The stream settings, the default virus scanner & the per conversion limits, whos
 HRConvert2's conversion families. An application gives its own value in $EngineSettingDefaults, a setting
 written across several lines included, & the prose is shared.
 
-THE CHECKERS CARRY HRCONVERT2'S NAME. They are hrconvert2-check.py, hrconvert2-check.sh &
-hrconvert2-doccheck.py, & they check whichever application the contract describes. See --The Checkers--.
+THE CHECKERS CARRY HRCONVERT2'S NAME. They are hrconvert2-check.py, hrconvert2-check.sh,
+hrconvert2-doccheck.py & hrconvert2-messages-cli.php, & they check whichever application the contract
+describes. See --The Checkers--.
 
 THE PIPELINES ARE HRCONVERT2'S. Each file's header names HRConvert2, & each guard dies with
 HRConvert2-34000, or HRConvert2-2 in the Files pipeline, when a file is loaded directly. Their code names
@@ -293,12 +340,14 @@ Each is run from the application root, & each says what it cannot see above the 
   python3 -I Documentation/Build/hrconvert2-check.py     The checks of the code. Authoritative.
   bash Documentation/Build/hrconvert2-check.sh           The second opinion, written in shell & awk.
   python3 -I Documentation/Build/hrconvert2-doccheck.py  The documents, in the house layout.
+  php Documentation/Build/hrconvert2-messages-cli.php    Each warning & error, held to its line in the catalogue.
 
 Each reads the entry point & the application's model from the contract, $EngineEntryPoint &
 $EngineConfigModelProvider, so a new application runs them unchanged.
 --no-scancore leaves out a bundled ScanCore, which a new application has only where it adopts the
 ScanCore pipeline.
 Documentation/ABOUT_QUALITY_CONTROL.txt says what each check is for & which fault it was written after.
+The Engine's tests are in Documentation/Build/Tests, & its README.txt says how to run them.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -311,4 +360,63 @@ so $RequiredConfigVersion is raised & php <entry point> --config --repair adds i
 keeping every value an administrator set. A dependency a newer Engine needs arrives in its half of the
 manifest, which it pins itself. An adopted pipeline is upgraded the same way, its folder replaced whole &
 its pin raised to the $PipelineVersion the new folder declares.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+--For The Engine's Maintainer--
+
+WHAT THIS KIT CHANGES IN zelon88/HRProprietary AT d2cf436, & WHERE EACH CHANGE IS RECORDED.
+d2cf436 is the v4.2.4 kit with v4.2.6's pipeline library beside it. HRConvert2's v4.3.0 kit, unpacked
+over it, added 12 files, changed 64 & removed none. v4.3.1 then moved ScanCore/ & Pipelines/ into
+Resources/. Unpacking a kit cannot move a folder, so both are moved before this kit is unpacked:
+
+  git mv ScanCore Resources/ScanCore
+  git mv Pipelines Resources/Pipelines
+
+Documentation/ENGINE_CHANGELOG.txt records every change v4.3.1 made, HRProtect's merge among them.
+An application adopts v4.3.1 by taking Resources/Kernel & Resources/Engine whole & pinning what they
+report. One that runs the scanners maps their five settings & pins them at v4.3.1, as the Example's
+contract does. Every application pins the Event Core at v4.3.1 & gives EventLoc the root-only role,
+as the Example does. The Engine's half of the template gained --Record Events--, so
+$RequiredConfigVersion is raised & php <entry point> --config --repair adds it to config.php.
+HRProtect, whose Event Core it was, removes its own copy of the core & of claimPrivateFolder(),
+eventCoreStanding(), loadEventCore() & noteEvent(), & --Record Events-- from its half of the
+template, because each is the Engine's now. A function defined twice stops PHP, & a setting in both
+halves is one the checkers report. The rest of what follows is HRConvert2's.
+
+  Resources/Engine/              engine.php, config-template.php, the Setup & Dependency Cores, & the
+                                 new Sandbox/. ENGINE_RECONCILIATION_HRCONVERT2.txt records each, with
+                                 why it changed & how another copy takes it.
+  Resources/Pipelines/           Thirteen pipelines & the shared LibreOffice module, & two new shared
+                                 modules. Archive, Drawing, Ebook & SVG are v4.2.8's, Trace v4.2.7's,
+                                 & Audio, Document, Identify, Image, OCR, Stream, Subtitle & Video
+                                 v4.3.0's. Each change is HRConvert2's, recorded in its CHANGELOG.txt.
+  Resources/ScanCore/            Unchanged.
+  Example/HRConvert2/            HRConvert2 v4.3.0's, & the five build scripts new to the kit.
+  Documentation/                 Eleven documents changed, & the reconciliation file is new.
+
+The reconciliation file lists the documents v4.2.5 & v4.2.7 changed, but for two of v4.2.5's. The
+rest are below. Three describe the Engine in part, & every other change is HRConvert2's.
+
+  v4.2.5  ENGINE_MIGRATION_STATUS.txt          Engine. A Fallback that fetches a release binary, & a
+                                               program that cannot say its version. HRConvert2. Its
+                                               count of settings.
+          ABOUT_DATA_DIRECTORY_PROTECTION.txt  HRConvert2. xml became a conversion format.
+  v4.2.6  ABOUT_DATA_DIRECTORY_PROTECTION.txt  HRConvert2. The links in a graph the Graph pipeline draws.
+          ABOUT_PIPELINE_COMPONENTS.txt        HRConvert2. Where the Graph family sits.
+          ERROR_DESCRIPTIONS.txt               HRConvert2. The Graph pipeline's block & warnings.
+          DEVELOPMENT_NOTES.txt                HRConvert2. The Graph pipeline & the language packs.
+  v4.2.8  ABOUT_PIPELINE_COMPONENTS.txt        HRConvert2. A request names its family, & what the shared
+                                               LibreOffice module returns.
+          ABOUT_WORKFLOWS.txt                  HRConvert2. A workflow's step names no family.
+          CREATING_CONVERSION_PIPELINES.txt    HRConvert2. Step 9f, a menu names its family.
+          ERROR_DESCRIPTIONS.txt               HRConvert2. Choosing a family, a refusal asked once &
+                                               ImageMagick told the format it writes.
+          DEVELOPMENT_NOTES.txt                HRConvert2. Six notes on formats & families.
+  v4.3.0  ERROR_DESCRIPTIONS.txt               Engine. The warning for an identity file that could not
+                                               be read. HRConvert2. Its pipelines' errors.
+          DEVELOPMENT_NOTES.txt                Engine. A TOOL SEES THE ENGINE'S OWN ACCOUNT & NONE OF THE
+                                               HOST'S IDENTITY. HRConvert2. Eleven other notes.
+          ABOUT_NETWORK_ISOLATION.txt          HRConvert2. A stream segment a user uploads.
+          ABOUT_PIPELINE_COMPONENTS.txt        HRConvert2. The fourth & fifth shared modules.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------

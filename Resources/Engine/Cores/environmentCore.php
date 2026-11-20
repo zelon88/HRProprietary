@@ -8,13 +8,15 @@
 // / https://www.gnu.org/licenses/gpl-3.0.html
 // /
 // / File Information ...
-// / v4.2.4.
+// / v4.3.1.
 // / The environment the Engine provides to every application built on it.
 // /
 // / The Engine owns these, & an application uses them without defining them.
-// / Every definition is guarded by function_exists, because the kernel already defines several before the Engine loads.
-// / The boot needs locateDependency to find php, sanitize to read an argument & readComponentVersion to verify the Engine.
-// / A function defined earlier is kept & the Engine defines the rest, because a redeclared function is fatal in PHP.
+// / The Engine pins this file exactly, in getAcceptedEnvironmentCore(), & loadEnvironmentCore() loads it as the Engine starts.
+// / The Engine does not start without it, because nearly every step the Engine takes calls into it.
+// / It defines nothing the kernel defines. Until v4.3.1 it held guarded copies of sanitize(), locateDependency() & getExtension(),
+// / which never loaded, because the kernel always defines them first. Its sanitize() also said something else with its second answer.
+// / describeEnvironment() alone is guarded by function_exists, so an application that defines its own keeps it.
 // /
 // / <3 Open-Source
 // / -----------------------------------------------------------------------------------
@@ -27,77 +29,9 @@ if (!isset($CoreLoaded) or $CoreLoaded !== TRUE) die('ERROR!!! Engine-35000, The
 
 
 // / -----------------------------------------------------------------------------------
-// / A function to remove everything a value must never contain.
-// / Accepts any value & whether to apply the strict rule. Returns the cleaned value &
-// / whether it was already clean, in that order.
-// /
-// / It removes rather than escapes.
-// / Escaping assumes every context the value will reach is known, & a removed character cannot be interpreted by anything.
-// / It cannot be used on a URL, because the characters it removes from a filename are the ones a URL is built from.
-// / An address is rebuilt from its parsed parts instead, as normalizeStreamBaseURL() does.
-// / The second return value is whether the input was already clean.
-// / A caller that must know somebody sent something they should not have reads it, because a cleaned value looks innocent.
-if (!function_exists('sanitize')) {
-  function sanitize($suppliedValue, $strictMode) {
-    // / Set variables.
-    global $EnableMemoryProtection;
-    $CleanValue = $suppliedValue;
-    $ValueWasClean = FALSE;
-    $allowedPattern = '';
-    $allowedPattern = $strictMode ? '/[^A-Za-z0-9._-]/' : '/[^A-Za-z0-9._\\- ]/';
-    if (is_array($suppliedValue)) {
-      $CleanValue = array();
-      foreach ($suppliedValue as $suppliedKey => $suppliedItem) {
-        list ($CleanValue[$suppliedKey], $itemWasClean) = sanitize($suppliedItem, $strictMode); }
-      $ValueWasClean = ($CleanValue === $suppliedValue); }
-    else if (is_string($suppliedValue)) {
-      $CleanValue = preg_replace($allowedPattern, '', $suppliedValue);
-      $ValueWasClean = ($CleanValue === $suppliedValue); }
-    else $ValueWasClean = TRUE;
-    // / Manually clean up sensitive memory. Helps to keep track of variable assignments.
-    purgeSensitiveMemory($EnableMemoryProtection, $allowedPattern, $suppliedValue, $strictMode);
-    return array($CleanValue, $ValueWasClean); } }
-// / -----------------------------------------------------------------------------------
-
-
-// / -----------------------------------------------------------------------------------
-// / A function to find an executable on this host.
-// / Accepts the name. Returns the full path, or an empty string.
-// /
-// / command -v rather than which, because which is a separate package that a minimal
-// / container frequently does not have, & its absence reports every dependency as missing.
-// / command is a shell builtin & is always there.
-if (!function_exists('locateDependency')) {
-  function locateDependency($dependencyName) {
-    // / Set variables.
-    global $EnableMemoryProtection;
-    $DependencyPath = '';
-    $commandOutput = array();
-    $commandExitCode = 1;
-    exec('command -v '.escapeshellarg($dependencyName).' 2>/dev/null', $commandOutput, $commandExitCode);
-    if ($commandExitCode === 0 && isset($commandOutput[0])) $DependencyPath = trim($commandOutput[0]);
-    // / Manually clean up sensitive memory. Helps to keep track of variable assignments.
-    purgeSensitiveMemory($EnableMemoryProtection, $commandOutput, $commandExitCode, $dependencyName);
-    return $DependencyPath; } }
-// / -----------------------------------------------------------------------------------
-
-
-// / -----------------------------------------------------------------------------------
-// / A function to take the extension off a path.
-// / Accepts the path. Returns the extension in lower case, without a dot.
-// /
-// / Lower case because a format list is written in lower case & JPG is not a different
-// / format from jpg. A comparison that fails on capitalisation is a bug reported as an
-// / unsupported file.
-if (!function_exists('getExtension')) {
-  function getExtension($suppliedPath) {
-    // / Set variables.
-    global $EnableMemoryProtection;
-    $Extension = '';
-    $Extension = strtolower((string)pathinfo((string)$suppliedPath, PATHINFO_EXTENSION));
-    // / Manually clean up sensitive memory. Helps to keep track of variable assignments.
-    purgeSensitiveMemory($EnableMemoryProtection, $suppliedPath);
-    return $Extension; } }
+// / The version of this component. Read by the Engine without executing this file, from v4.3.1.
+// / The Engine pins it exactly, in getAcceptedEnvironmentCore().
+$EnvironmentCoreVersion = 'v4.3.1';
 // / -----------------------------------------------------------------------------------
 
 
@@ -764,7 +698,8 @@ function dataProtectionContents() {
 // / Accepts the directory. Returns whether it is protected & whether a page was written.
 // /
 // / A directory a web server can reach without an index lists every file in it on most default configurations.
-// / The page is generated rather than copied, so it cannot be missing.
+// / The page is the Engine's protection page, from v4.3.1, which writeProtectionPage() builds from its template.
+// / Until v4.3.1 this Core built a page of its own, which put markup in a Core.
 // / An existing index.html is left alone, because an application may have a real one.
 // / Only index.html is written, & a server that prefers another name needs its own directive.
 function protectHostedLocation($hostedDirectory) {
@@ -772,26 +707,17 @@ function protectHostedLocation($hostedDirectory) {
   global $EngineProtectHostedLocations, $EnableMemoryProtection;
   $LocationIsProtected = FALSE;
   $PageWasWritten = FALSE;
-  $resolvedDirectory = $indexPath = $pageContents = '';
+  $resolvedDirectory = '';
   if (!isset($EngineProtectHostedLocations) or $EngineProtectHostedLocations !== TRUE) $LocationIsProtected = TRUE;
   else {
     $resolvedDirectory = (string)@realpath((string)$hostedDirectory);
     if ($resolvedDirectory === '' or !is_dir($resolvedDirectory)) warningEntry('A hosted location could not be protected because it does not resolve: '.(string)$hostedDirectory);
+    else if (!function_exists('writeProtectionPage')) warningEntry('A hosted location could not be given a protection page, because the Engine that writes one is not loaded: '.$resolvedDirectory);
     else {
-      $indexPath = $resolvedDirectory.DIRECTORY_SEPARATOR.'index.html';
-      if (file_exists($indexPath)) $LocationIsProtected = TRUE;
-      else {
-        $pageContents = '<!DOCTYPE html>'.PHP_EOL.'<html lang="en">'.PHP_EOL.'<head>'.PHP_EOL
-          .'<meta charset="utf-8">'.PHP_EOL.'<meta name="robots" content="noindex, nofollow">'.PHP_EOL
-          .'<title>Nothing to see here</title>'.PHP_EOL.'</head>'.PHP_EOL.'<body>'.PHP_EOL
-          .'<p>This directory does not list its contents.</p>'.PHP_EOL.'</body>'.PHP_EOL.'</html>'.PHP_EOL;
-        if (@file_put_contents($indexPath, $pageContents) !== FALSE) {
-          @chmod($indexPath, 0644);
-          $LocationIsProtected = TRUE;
-          $PageWasWritten = TRUE; }
-        else warningEntry('A hosted location could not be given a protection page: '.$resolvedDirectory); } } }
+      list ($LocationIsProtected, $PageWasWritten) = writeProtectionPage($resolvedDirectory);
+      if (!$LocationIsProtected) warningEntry('A hosted location could not be given a protection page: '.$resolvedDirectory); } }
   // / Manually clean up sensitive memory. Helps to keep track of variable assignments.
-  purgeSensitiveMemory($EnableMemoryProtection, $resolvedDirectory, $indexPath, $pageContents, $hostedDirectory);
+  purgeSensitiveMemory($EnableMemoryProtection, $resolvedDirectory, $hostedDirectory);
   return array($LocationIsProtected, $PageWasWritten); }
 // / -----------------------------------------------------------------------------------
 
@@ -1345,7 +1271,7 @@ function verifyServedExposure($servedPath) {
       if (!$parentIsHeld) warningEntry('The '.$locationName.' location at '.$servedPath.' does not exist & was not created. '.$holdNotice);
       else if (@mkdir($servedPath, 0700) && $RunningAsRoot) {
         list ($ownerWasChanged, $ownerNotice) = changeOwnerWithoutFollowing($servedPath, $ApacheUser, $ApacheUser);
-        if (!$ownerWasChanged) warningEntry($ownerNotice); } }
+        if (!$ownerWasChanged) warningEntry('The '.$locationName.' location at '.$servedPath.' was created & could not be given to '.$ApacheUser.'. '.$ownerNotice); } }
     // / The probe is named for the application, as its policy marker is.
     $canaryName = engineApplicationSlug().'-protection-canary-'.substr(bin2hex(random_bytes(8)), 0, 16).'.svg';
     $canaryPath = $servedPath.DIRECTORY_SEPARATOR.$canaryName;

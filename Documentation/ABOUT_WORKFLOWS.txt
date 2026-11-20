@@ -1,13 +1,13 @@
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 COPYRIGHT INFORMATION ...
-HRConvert2, Copyright on 11/12/2026 by Justin Grimes, www.github.com/zelon88
+HRProprietary Engine, Copyright on 11/12/2026 by Justin Grimes, www.github.com/zelon88
 
 LICENSE INFORMATION ...
 This project is protected by the GNU GPLv3 Open-Source license.
 https://www.gnu.org/licenses/gpl-3.0.html
 
 APPLICATION INFORMATION ...
-This application is designed to provide a web-interface for converting file formats on a server for users of any web browser without authentication.
+The HRProprietary Engine provides a coherent application environment. It is bundled with an application rather than installed beside one.
 
 FILE INFORMATION ...
 v4.1.4.
@@ -21,7 +21,7 @@ This application requires at least a Raspberry Pi Model B+ or greater.
 This application will run on just about any x86 or x64 computer.
 
 DEPENDENCY REQUIREMENTS ...
-The authoritative list of dependencies is Resources/Engine/depends.php & Resources/Contract/depends.php, the Engine's half & the application's, & nothing else. Run  php convertCore.php -v  to see what this installation has.
+What the Engine itself needs is Resources/Engine/depends.php, & --setup installs it with the application's own half. Run  php <entry point> -v  to see what an installation has.
 
 <3 Open-Source
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -153,6 +153,8 @@ every budget, as it does once a disk is within --Storage Reserve--.
              Reads a file when a family reads its extension & writes the format asked for, so
              a conversion to jpg reads images & not spreadsheets. A file already in that format
              is passed on unchanged, from v4.2.3, & left out where the step resizes, rotates or re-encodes.
+             A step names no family, so a file is converted by the first family whose pipeline
+             converts the pair, from v4.2.8, & a pdf to txt reaches Calibre, which LibreOffice refuses.
              Options: Extension, required, any format a family writes, of which this server
              offers those an installed tool writes. Filename, the name
              without its extension, empty for each file's own. Height & Width, 0 to 65535.

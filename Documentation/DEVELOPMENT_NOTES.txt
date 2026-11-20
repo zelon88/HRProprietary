@@ -1,13 +1,13 @@
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 COPYRIGHT INFORMATION ...
-HRConvert2, Copyright on 11/10/2026 by Justin Grimes, www.github.com/zelon88
+HRProprietary Engine, Copyright on 11/10/2026 by Justin Grimes, www.github.com/zelon88
 
 LICENSE INFORMATION ...
 This project is protected by the GNU GPLv3 Open-Source license.
 https://www.gnu.org/licenses/gpl-3.0.html
 
 APPLICATION INFORMATION ...
-This application is designed to provide a web-interface for converting file formats on a server for users of any web browser without authentication.
+The HRProprietary Engine provides a coherent application environment. It is bundled with an application rather than installed beside one.
 
 FILE INFORMATION ...
 v4.0.6.
@@ -188,6 +188,56 @@ anywhere else, as sandboxCommand() always did. The environment check required bo
 container, so with --Require Sandbox-- FALSE & --Require Sandbox On Docker-- TRUE it said
 conversions would run unprotected while sandboxCommand() refused every one. config.php also said
 --Require Sandbox-- must be FALSE in a container, where it is not read at all.
+
+A TOOL THAT FOLLOWS A PATH AN UPLOAD NAMES IS STOPPED BY ITS OWN SETTING, OR NEVER RUNS UNCONFINED. v4.2.7.
+--Require Sandbox-- set to FALSE accepts the risk of a tool's own bugs where no sandbox can be
+built. A tool that reads a file an upload names by its path, & writes what it read into what it
+makes, needs no bug, so no setting can accept that. Every converter was handed an upload naming a
+file outside its folder by a relative path, an absolute path & a file URL, & was traced. Pandoc,
+TeX & Graphviz are stopped by what travels with their commands, --sandbox, paranoid TeX &
+SERVER_NAME, & ImageMagick by the policy its pipeline carries. LibreOffice drew an image a
+document, an HTML page saved as a doc & an RTF's INCLUDEPICTURE named. Calibre copied into its book
+a file an EPUB's manifest named. Inkscape & Resvg drew an image an SVG named, & Dia one a diagram
+named. Assimp wrote into its model a glTF's buffer from wherever the glTF named it. FFMPEG & FFprobe
+read a DASH manifest whatever the upload was called, & opened each file it named. Nothing passed to
+any of them stops that, so the libreoffice, calibre, inkscape, resvg, dia, meshlab & ffmpeg
+profiles set RequireSandbox, & sandboxCommand() refuses them wherever no sandbox can be built.
+Poppler, mat2, Potrace, Dasel, yq, msgconvert, 7-Zip, ClamAV & ScanCore read only the file they are
+handed, & OpenSCAD already refused to render without its own sandbox.
+
+LIBREOFFICE'S OWN LINK BLOCKING IS NOT ENOUGH. v4.2.7.
+BlockUntrustedRefererLinks stopped the image a document & an HTML page named, & not the picture an
+RTF's INCLUDEPICTURE named. sanitizeDocumentLinks() rewrites a URL a document links to, & catches
+none of the three a path names, so LibreOffice only ever runs in a sandbox.
+
+FFMPEG COULD BE STOPPED BY ITS OWN SETTING, & THAT IS LEFT FOR A LATER RELEASE. v4.2.7.
+-format_whitelist names the demuxers FFMPEG & FFprobe may use. A list leaving out every demuxer that
+opens a file another names would stop the read with the command, & the ffmpeg profile could then
+run media where no sandbox can be built. Which demuxers those are has to be traced as these were.
+
+INSIDE ITS SANDBOX A TOOL STILL SEES WHAT THE BASE SANDBOX SHOWS. v4.2.7.
+Calibre copied /etc/passwd into a book inside its sandbox, because the base sandbox shows it for
+LibreOffice's user lookup. It shows /opt as well, where the guide clones the source. Both are the
+Engine's, & ENGINE_RECONCILIATION_HRCONVERT2.txt leaves them for its maintainer.
+
+FFMPEG & FFPROBE ARE STOPPED BY THEIR OWN SETTING. v4.3.0.
+Every command names the demuxers it may use in -format_whitelist, from ffmpegDemuxers.php, & leaves
+out hls, dash, concat & imf, which open a file another file names, sdp, rtsp, rtp & sap, which open
+an address one names, & the input devices. The list follows a nested read, so a stream's playlist is
+refused at a segment that is itself a manifest. A DASH manifest & an ffconcat list named mp4 were
+traced through FFMPEG 6.1, which read each & the file it named, & the list refuses both. Every audio,
+video & subtitle sample the format suite converts reads with it as without it. A demuxer a later
+FFMPEG adds is refused until it is traced & named. The ffmpeg profile still requires a sandbox,
+because the Stream pipeline's FFMPEG follows a playlist by design & runs under it. A profile of its
+own for streams would let the rest run where no sandbox can be built.
+
+A TOOL SEES THE ENGINE'S OWN ACCOUNT & NONE OF THE HOST'S IDENTITY. v4.3.0.
+The base sandbox shows the passwd, group & machine-id in Resources/Engine/Sandbox, names the host
+sandbox, & runs its tool as sandbox, 1000, where bubblewrap makes the user namespace itself, as 0.8 &
+later do. Older bubblewrap runs a tool as the web server's account, which only the host's passwd
+names, so it shows the host's passwd & group as before, & -v's Sandbox identity line says so. /opt is
+no longer shown, & the calibre profile shows /opt/calibre. The web server's environment is still
+passed in, & ENGINE_RECONCILIATION_HRCONVERT2.txt leaves it for the Engine's maintainer.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -204,6 +254,25 @@ administrator restores the original from the package or the build that provided 
 
 OPENSCAD NEEDS NO APPARMOR OVERRIDE.
 Nothing on the host confines it. The bubblewrap sandbox isolates it.
+
+IMAGEMAGICK READS WHAT A FILE HOLDS BEFORE WHAT IT IS CALLED. v4.2.7.
+PostScript named .png or .pdf reached Ghostscript under the Image, Trace & OCR policies, which
+Image's granted for writing EPS, & drew a file below /tmp, which -dSAFER lets it read. An SVG named
+.png reached the SVG coder, which drew an image it named by an absolute path or a file URL. The
+three policies refuse to read SVG & PostScript, so Image still writes PS & EPS, & Image & OCR still
+read PDF. Identify's refused both already. Outside a sandbox a rule in the host's own policy that
+names the same coder decides it, so a host that grants SVG or PostScript back grants it there.
+Naming the decoder on the command line, as Trace does, holds whatever the host's policy says, & is
+left for a later release for Image & OCR.
+
+IMAGEMAGICK IS TOLD THE DECODER IT READS WITH. v4.3.0.
+The Image & OCR pipelines name it, as DECODER:path, from imageMagickDecoders.php, so no policy decides
+what reads a file. It is named by what the file holds, so a photograph named for the wrong format is
+still read, & by the extension where a file's first bytes say nothing, as a TGA's do not. A camera raw
+file holds a TIFF's header, so its decoder is its extension's. PostScript, an SVG or an MVG named png is
+handed to the PNG decoder, which cannot read it. A file named pdf is read as a PDF only where its first
+bytes are a PDF's header, because Ghostscript reads PostScript as readily, & is refused with 8003 or
+15015 otherwise. Trace names its decoder by the extension alone, as before.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -289,6 +358,14 @@ administrator to remove or put right.
 A LOCATION ANOTHER ACCOUNT COULD REPLACE IS SKIPPED.
 Root keeps nothing there & changes nothing there, because the account that can replace the
 folder can replace it between root's check & root's write.
+
+A FOLDER AN APPLICATION DECLARES IN THE DATA LOCATION IS MADE BY -fp. v4.3.1.
+An application could declare a location & give it a role, & the role was applied, but nothing made
+the folder. One that made the folder itself was told by every -fp that a folder which does not
+belong was at the top of its data location. Setup Core makes each folder the contract declares
+directly below the data location, under a setting that is not one of the Engine's own, & knows its
+name from then on. The Engine's own are left as they were, because the backup folder is made only
+when there is something to keep in it.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -368,6 +445,21 @@ ScanCore_Config.php carries a command line guard upstream's does not, & its inde
 HRConvert2's page, so neither is subscribed. A ScanCore release that adds a configuration entry is
 refused by ScanCore until the entry is merged by hand, which is the signal to merge it. ScanCore
 1.8, the release bundled, is the manifest's minimum.
+
+A PROGRAM NO LTS RELEASE CARRIES CORRECTLY IS THE PROJECT'S OWN RELEASE BINARY. v4.2.5.
+Dasel 2, which Debian & Ubuntu carry, writes a Go object dump into XML & CSV & invalid TOML, & says
+it succeeded. The yq they carry is a Python wrapper around jq that shares the name. Their Pandoc
+keeps its data files outside the program, so --sandbox, which Pandoc's manual asks for on untrusted
+input, cannot write DOCX, PPTX or EPUB. Debian 12 & Ubuntu 24.04 carry no Resvg, & Ubuntu 22.04's is
+0.8. Each is fetched as the binary its project publishes, pinned by version & checksum, rather than
+built, because none needs a patch & a Go, Rust or Haskell toolchain is a large thing to install on a
+server for one program. Resvg 0.50.0 was not pinned, because its binary needs glibc 2.43, which no
+supported distribution carries, & 0.49.0 needs 2.35, which all of them but Debian 11 do. Dasel, Resvg
+& Pandoc publish no checksum, so the pin is the checksum this release took, & the manifest says so.
+
+THE DATA SUBSYSTEM IS NAMED STRUCTURED DATA. v4.2.5.
+--subsystem matches any subsystem whose name holds what was typed, so --subsystem=Data would have
+installed, & removed, Metadata's MAT2 as well.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -657,6 +749,193 @@ uninspected. A last segment shorter than five packets was refused, which refused
 address a permitted range allows was refused when a stream file named it as an address, & FFMPEG
 was not pinned to it. The pinned hosts file was removed as soon as the shell returned, which was
 before bwrap read it, so FFMPEG never started. A fetch kept an error page or a redirect as the file.
+
+FIVE FAMILIES WERE ADDED, AFTER EBOOK & BEFORE STREAM. v4.2.5.
+Data, LaTeX, Trace, Email & Markup each claim only a pair no older family claims, so nothing an
+installation converted before v4.2.5 changes pipeline. A docx is shown a Markup panel beside its
+Document & Ebook panels, & docx to pdf from the Markup panel is still LibreOffice's, as docx to pdf
+from the Ebook panel always was. Each new panel's button is named for its panel, because three
+buttons alike on one file say nothing. A panel's unchosen format is the first the file is not
+already, so submitting it untouched is never a conversion to the format the file has.
+
+DASEL WRITES EVERY DATA FORMAT BUT XML, & YQ WRITES XML. v4.2.5.
+Dasel 3 fails loudly where Dasel 2 wrote garbage, & cannot write a number as XML, & writes a
+document with more than one root for most others. yq writes XML from the JSON Dasel writes, under
+one root, & the XML is read back before it is offered, because yq writes an element name XML does
+not allow. TOML & CSV hold only some shapes, & Dasel 3 writes a list as TOML without complaint, so
+the shape is asked first & a document that cannot be held is refused with error 44003, which says
+what it holds. yq reads nothing a user uploaded.
+
+A LATEX DOCUMENT IS A PROGRAM, SO TEX IS SET PARANOID & HAS NO SHELL. v4.2.5.
+openin_any & openout_any are p, so TeX refuses a file named by an absolute path, a hidden file &
+a path above the document, for reading & writing, & shell_escape is f & -no-shell-escape is
+passed. They travel with the command rather than in the xelatex sandbox profile, because the
+Engine applies a profile's variables only inside a sandbox, & they must hold where --Require
+Sandbox-- lets a conversion run without one. Paranoid TeX refuses its own document named by its
+absolute path, so the document is copied into a work folder & named by its name, & runInWorkFolder()
+runs TeX there. The xelatex profile shows the fontconfig cache, because without it fontconfig read
+every font before a short document that names one, which took twice as long. Two passes settle a
+table of contents & cross references, & a document TeX stopped on is not typeset again, because it
+would stop at the same line. A PDF TeX had begun when it stopped is removed, because it is a part
+of the document reported as the whole.
+
+TRACE NAMES IMAGEMAGICK'S DECODER. v4.2.5.
+ImageMagick otherwise reads a file by what is in it, & a file named .png that holds PostScript or
+MVG reached Ghostscript or the MVG coder under the name of an image. The image is copied into a
+work folder as source & read as png:source, jpeg:source & so on, which is refused for anything else.
+Potrace reads BMP & PNM itself, so those need no ImageMagick. A transparent part is laid on white,
+& only the first frame of an animation is traced.
+
+RESVG RENDERS AN SVG TO A PNG FIRST, & INKSCAPE IS ITS FALLBACK. v4.2.5.
+Resvg starts in milliseconds where Inkscape takes most of a second, & reads no script & fetches
+nothing. It fits a drawing to one dimension keeping its proportions, as Inkscape does, so a drawing
+given both is left to Inkscape, which stretches it, & renders as it always has. Resvg makes none of
+fontconfig's substitutions, so a family the server does not have is drawn in DejaVu Sans, which is
+what fontconfig gives Inkscape for a family it knows nothing of, & a drawing whose text found no
+font at all is rendered by Inkscape instead, because Resvg leaves that text out.
+
+MARKITDOWN WAS LEFT OUT. v4.2.5.
+It is a Python program with a large tree of dependencies, & what it extracts from PDFs, images &
+Office files the Document, OCR & Markup pipelines already do inside a sandbox.
+
+PANDOC READS & WRITES HTML, & THE MARKUP PIPELINE DOES NEITHER. v4.2.5.
+The core refuses html as a dangerous file, so none is ever uploaded, & a format list offering it
+would hand a user a button whose request ends with fatal error 14003. htm is no dangerous file, but
+ABOUT_DATA_DIRECTORY_PROTECTION.txt keeps it out of every format list, because a browser runs what
+an HTML page carries. XML is the other way round. The Data pipeline exists to convert it, so it is a
+conversion format from v4.2.5, & is safe for the reason an SVG is, the download & sandbox headers
+the DATA directory is served with, which the end to end suite reads back for an XML file.
+
+A PROGRAM WITH NO VERSION WAS PRESENT TO --install-depends. v4.2.5.
+Ubuntu 24.04's dasel is Dasel 2, which has no version command, & its yq is a different program in
+Python, so both answer with no version this release can read. --install-depends took each as present
+& fetched nothing, though --check-depends said it would fetch the own copy, & every Data conversion
+then failed with error 44001. It now makes the own copy wherever the entry can have one. An entry
+that cannot is still taken as present, because reinstalling a program that works helps nobody.
+
+A REPAIR RAISED THE STAMP OVER SETTINGS IT SKIPPED. v4.2.5.
+The format lists are in a section the configuration utility only displays, so the walk & a reset
+never change what an administrator listed. A repair skipped that section too, & so did its count of
+what it leaves missing, so the repair after the v4.2.5 drop in added the two timeouts, raised the
+stamp to v4.2.5 & left out the ten format lists, & every command then refused with error 28000. A
+repair adds a missing setting to such a section now, because adding one changes no value there.
+
+A GRAPH IS DRAWN BY GRAPHVIZ, WHICH READS NO FILE BUT THE GRAPH. v4.2.6.
+A graph can name an image or a shape file for a node, & Graphviz reads it from wherever the graph
+says, an absolute path included. SERVER_NAME is set for it, so it behaves as Graphviz does behind a
+web server & reads no file a graph names, & the pipeline warns where one was named. It travels with
+the command, as TeX's settings do, so it holds where no sandbox could be built. A graph can also
+give a node a link, which Graphviz writes into an SVG as it was given, javascript: included, & the
+DATA directory's download & sandbox headers cover it as they cover every SVG. gv is the only input,
+because dot is a Word template to the Document family, & a layout engine can run a long time over a
+large graph, so --Graph Conversion Timeout-- bounds it.
+
+RECIPE & OPF ARE REFUSED, & AN EPUB CANNOT BE. v4.2.7.
+A calibre recipe is a Python program calibre runs, & an OPF names by path the files calibre packs
+into the book, so both are refused as html is, & the Ebook pipeline no longer declares recipe. An
+EPUB carries a manifest naming its files too, & is what most e-books are, so the calibre profile's
+RequireSandbox is what keeps one from reaching a file outside it.
+
+THE IMAGE PIPELINE NO LONGER READS SVG OR EPS. v4.2.7.
+Its policy refuses both, so declaring them would offer a conversion that always fails. The SVG
+pipeline converts an SVG, with Resvg or Inkscape in its sandbox.
+
+IDENTIFY SAYS WHETHER NO TOOL OR NOT EVERY TOOL READ THE FILES. v4.2.7.
+Once FFprobe's profile required a sandbox, file & ImageMagick could read a selection unprotected
+while FFprobe was refused, & 37004 still said no tool could read the files. It says not every tool
+could, there, & the note on each audio or video file says its details were not read.
+
+A FORMAT IS OFFERED ONLY AFTER A SAMPLE OF IT CONVERTS THROUGH ITS PIPELINE. v4.2.8.
+Every format v4.2.8 offers was converted in its pipeline's own sandbox by the tools the application
+installs, & what came out was opened & checked for what went in. The samples LibreOffice, patool &
+Apache Tika test with stood in for the formats nothing on a test host writes, such as WordPerfect,
+Apple Pages, CorelDRAW, Visio, ARJ, CAB & LZH. A declaration the conversions showed untrue was
+corrected rather than offered. Inkscape 1.2 imports no DXF without a display & no CGM, & stops with
+an internal error writing a POV-Ray file of any drawing holding a rectangle or a circle. FFMPEG reads
+MicroDVD, JACOsub & MPL2 & has no encoder for any of them. Dia 0.98 has no jpg, bmp, tif or wmf filter,
+writes an empty CGM, & opens neither a CGM nor a shape. LibreOffice never wrote a PowerPoint add-in,
+so ppa left the presentation outputs. The one DMG found was a damaged HFS image 7-Zip rightly refuses,
+so dmg is still not offered.
+
+NO MACRO RUNS WHEN A DOCM OR AN XLSM IS CONVERTED. v4.2.8.
+A Word document & an Excel workbook whose VBA macro writes a marker into the file when it opens were
+converted to pdf, odt & ods in the sandbox, & no marker was written. The same files opened by
+LibreOffice with macros allowed write it, so the macros were real. LibreOffice's --convert-to never
+ran a document's macro in any test, even with its macro security set to low.
+
+A FILE HOLDING SEVERAL IMAGES IS READ AS ITS FIRST INTO A FORMAT HOLDING ONE. v4.2.8.
+ImageMagick reads a layered PSD as its layers & a GIF as its frames, & writes a numbered file for each
+into a format that holds one image, & never the file asked for, so the conversion failed with 8000.
+The pipeline reads [0] there, which for a PSD is the image its layers flatten to, & reads every image
+into gif, tiff, pdf, webp & ico, which hold several. The frame is escaped apart from the path, so the
+sandbox finds the path it rewrites. ImageMagick 7 with Ghostscript 10 renders only a PDF's first page.
+
+IMAGEMAGICK IS TOLD THE FORMAT IT WRITES. v4.2.8.
+Asked for a format it has no encoder for, ImageMagick warns & writes the format it read under the name
+it was given, so a server whose libheif had no AV1 encoder handed out a png named avif & called it a
+success. The output is named FORMAT:path, & such a request now fails with 8000. On Ubuntu 24.04 libheif
+recommends its AV1 encoder & only suggests its HEVC decoder, so building ImageMagick there reads no heic.
+
+HEIC, HEIF, EXR & CAMERA RAW. v4.3.0.
+build-imagemagick-v7.sh installs LibRaw & OpenEXR & builds ImageMagick with both, & installs libheif's
+HEVC decoder & encoder & its AV1 encoder where a release packages them apart, as Ubuntu 24.04 does &
+Debian 12 does not. Image then reads exr, cr2, nef, arw & dng & writes heic, heif & exr. A CR2, a NEF,
+a DNG & an EXR made outside the project were read, & HEIC, HEIF, AVIF & EXR written & read back. No ARW
+sample could be fetched, so arw is offered on LibRaw's word. LibRaw warns of corrupted data in the CR2
+& still decodes it.
+
+IMAGEMAGICK IS PINNED, CHECKED & HARDENED. v4.3.0.
+build-imagemagick-v7.sh downloaded ImageMagick.tar.gz, which is always the newest release, & built it
+unchecked. It now clones the 7.1.2-36 tag from ImageMagick's repository & builds it only where the tag
+names commit dcec873ede2912a1b045a50fd54cd138ee5f3fa4. A commit names its whole tree, & git checks every
+object it fetches against its name, so a moved tag or an altered fetch builds nothing. A release
+archive's checksum would serve as well, but neither imagemagick.org nor GitHub's downloads could be
+reached from the machine that pinned it, & a checksum not computed from the file is a guess. The fetch
+& the check come before anything is removed, so a failure leaves the installed ImageMagick in place.
+The approval record asks for _FORTIFY_SOURCE=3, a strong stack protector, PIE & full RELRO. Ubuntu
+24.04's compiler already applies every one of them, as the build here showed, so the flags make the
+same build where a compiler does not. It defines _FORTIFY_SOURCE itself, so it is undefined first, &
+Debian's & Ubuntu's both build PIE, so -pie is not passed. The record also names --with-modules with --disable-shared, which contradict each other,
+because a module is a shared library, & --with-security-policy=head, which is none of ImageMagick's
+four. The build keeps its shared libraries without modules, as before, & installs the secure policy,
+which ImageMagick names for untrusted images.
+In a sandbox a pipeline's own policy covers the host's, so the secure one decides nothing there.
+Outside one both are read, the pipeline's first. A rule the host's names overrides the pipeline's, &
+its resource limits bind, so a PDF, an image over 8000 pixels wide or high & one of more than 32
+frames are refused there. Each was seen refused with the Image pipeline's policy named in
+MAGICK_CONFIGURE_PATH. The build took two & a half minutes on two cores of Ubuntu 24.04, & its last
+lines confirmed the pin, the hardening & the policy.
+
+WEBM IS VP9 & OPUS, ENCODED IN REAL TIME. v4.3.0.
+VP9's own settings took three times as long as a ten second 720p video lasted, on two cores. Real time,
+a thread per row & a constant quality of 30 took 2.6 seconds against H.264's 2.2, with an SSIM of 0.996
+against H.264's 0.994, so a Raspberry Pi can write one.
+
+A 3GP'S SOUND IS AAC. v4.3.0.
+A 3gp's own sound is AMR, & Ubuntu 24.04's FFMPEG has no AMR encoder, so a 3gp of any video with sound
+failed there. Video & Stream name AAC, which every 3gp player plays.
+
+A STREAM IS COPIED ONLY INTO A CONTAINER THAT HOLDS WHAT IT CARRIES. v4.3.0.
+A stream carries H.264 or HEVC video & AAC, AC-3 or MP3 sound. mp4, mov, mkv, ts & flv hold them as they
+are, so they are copied. m4v holds no HEVC, & it & avi, mpeg, wmv, webm, ogv & 3gp are encoded as the
+Video pipeline encodes them, & an audio format takes the sound alone. Each was written from a local
+H.264 stream & an HEVC one.
+
+AN UPLOADED TS IS A LEAF. v4.3.0.
+The walker treats a segment as a leaf, with nothing to fetch, but the inspection before it read an
+uploaded ts whole & for addresses, as it reads a playlist. A segment is binary. x264 writes its own
+web address into the first frame it encodes, so a ts holding that frame was refused for plain http, &
+bytes that happened to read as a private address refused others. A ts larger than PHP's memory limit,
+128 MB in the php.ini the project ships, ended the request. A segment is now classified from its first
+five packets & read for nothing else, & a playlist is read whole & for every address, as before. No
+demuxer in the stream whitelist that reads a file opening with the sync byte follows a reference, &
+hls reads only a file that opens with #EXTM3U. The QC pass for v4.3.0 found it by converting a ts
+through Apache, which no suite had done.
+
+A DOCUMENT CONVERTER THAT RAN TO ITS END IS ASKED ONCE. v4.3.0.
+LibreOffice exits 0 whether it wrote a file, found no filter for the pair or could not load the file,
+& asked again it does the same. A LibreOffice a memory ceiling, a supervisor or a crash stopped exits
+above 128, & may finish when asked again, so only that one is retried.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -778,6 +1057,94 @@ Seven settings the list left out are required now, as every other is. They are t
 data locations, unprivileged namespaces, the four per conversion limit settings & the storage
 cleanup interval. Every template since v3.9.6 holds them, & --config --repair adds one a config.php
 written by hand lacks.
+
+A PATH HAS A SANITIZER OF ITS OWN. v4.3.1.
+sanitize() removes what a name must not hold. A path with a character removed names a different
+file, so a path could not go through it, & an application that took a path from its operator read
+it raw & said so in a comment. That was an exception to rule 21, & the rule has none.
+sanitizePath() removes nothing. It accepts a path whole & returns it as it was given, or refuses it
+whole & returns nothing, so no caller is handed the name of a file nobody typed.
+IT IS A FUNCTION & NOT A MODE OF sanitize(). The Environment Core defines a sanitize() of two
+arguments for when the kernel is not loaded, & PHP ignores an argument a function does not declare,
+so a mode would have been an ordinary sanitize() there, without a word, & would have changed the
+path. sanitizeString() is not a URL sanitizer & must not become one, & the same holds of a path.
+No signature changed.
+IT REFUSES WHAT WOULD ACT ON SOMETHING OTHER THAN A FILE, OR ON WHOEVER READS THE PATH.
+A control character forges a line of a log & drives a terminal. A stream wrapper has PHP open
+something that is not a file. What PHP takes for one was measured on PHP 8.3, by registering a
+wrapper under each kind of name & opening a path that begins with it. PHP reads two or more
+letters, digits, dots, plus signs or dashes before :// as the name of a wrapper, in any case, &
+data: alone as one. Where no wrapper has that name it warns & opens the path as a file, & the
+path is refused all the same, because whether one is registered is not the path's to say. A single
+letter before :// is a file name, & so is anything with ./ before it. PHP refuses a path of
+PHP_MAXPATHLEN - 1 bytes or more without asking the system, which was measured the same way.
+IT IS NOT THE BOUNDARY sanitize() IS. A file may be named with a space, a quote, a bracket or a
+dollar sign, so a path it accepted holds them still. It is quoted where it is handed to a shell &
+escaped where it is printed in a page.
+STRICT IS FOR A PATH NOBODY RESOLVES AFTERWARDS. It also refuses a path that is not absolute, &
+one holding a part that is a dot, two dots or empty. A path typed at a terminal is taken without
+it & resolved once, because an operator types a path from where they stand.
+A NAME READ FROM A FOLDER IS NOT INPUT, & IS NEVER SANITIZED. A file is named whatever its owner
+chose, a control character included, & refusing the name would let a file hide behind it. It is
+used byte for byte, & made printable only where it is shown.
+
+AN APPLICATION'S HANDLER SETS THE EXIT STATUS. v4.3.1.
+runApplicationArgument() threw away what the handler returned & exited 0. The reference
+application declares no handler, so nothing had ever returned one. A command line is run by
+scripts & a script reads the status, so a whole number from 0 to 255 is the status, nothing is
+still 0, & anything else is a failure that is logged. The second value was read from the third
+argument whichever way the first was written, so  --app-x=A B  lost B.
+
+A FOLDER IS HELD BY ENTERING IT. v4.3.1.
+folderIsHeldForRoot() lets root work by name in a folder nothing but root can replace. Root acting
+on a file in a folder another account owns has no such folder. enterFolderWithoutFollowing() makes
+that folder the working folder of the process, one name at a time from the filesystem root. It
+refuses a link, & compares each step with what lstat showed. The working folder is the folder
+itself & not a name, so a name inside it is reached without anything above it being looked up again.
+IT RESTS ON WHAT PHP DOES WITH A RELATIVE NAME, WHICH WAS MEASURED. With strace, on PHP 8.3 built
+without thread safety, lstat, stat, link, unlink, rename, mkdir, rmdir, chmod, touch & scandir hand
+a relative name to the system as it was written. fopen & hash_file do not. Each joins the name to
+the path of the working folder & opens the whole path. So a file opened there is compared with what
+lstat showed, by device & inode, before a byte is read, & no file is created there by name.
+A PHP built to run threads keeps a working folder for each thread, & is refused.
+
+TEXT NOBODY VETTED IS MADE PRINTABLE BY THE KERNEL. v4.3.1.
+The Workflow Core has had printableWorkflowText() from v4.2.2, for a name read from a folder the
+web server account can write. The second application wrote the same function four more times, in
+its core & in each of its three pipelines, because a pipeline calls nothing of an application's &
+the kernel had none to call. That is past what rule 20 allows. The kernel has printableText() now,
+& the Workflow Core & the second application call it. printableWorkflowText() keeps its name & its
+argument, & hands the kernel's the work.
+STRICT ALSO CUTS TEXT LONGER THAN 1000 BYTES. A line a scanner prints can be any length, & each of
+the four copies cut it. The Workflow Core's never cut, & asks for nothing to be cut, so what
+--workflow prints did not change. Each was compared with what it replaced, on four thousand samples.
+THE CUT NEEDS NO EXTENSION. The copies cut with mb_strcut. mbstring is the Authentication Core's
+dependency, & the kernel runs before any dependency is checked. So the kernel cuts at 1000 bytes &
+takes back up to three, until what is left is whole characters.
+IT CHANGES WHAT IS SHOWN & NOTHING ELSE. Text that names a file is still used byte for byte
+wherever the file is reached, & an entry is still logged as it is handed over.
+
+A FILE THE KERNEL OPENS IS CLOSED IN EVERY COMMAND THE PROCESS RUNS. v4.3.1.
+A handle a process holds open is handed to each command it starts, & to what that command starts,
+unless it was opened to be closed there. openFileWithoutFollowing() opened root's logfile & every
+lock without saying so. HRProtect runs a scanner in a sandbox, as root, & the list of what a
+running scanner held open named root's logfile & the lock of the scan. A scanner parses hostile
+files & is assumed to be exploitable. One that was could have written what it liked into root's
+log, cut the log short, or let the lock go. The sandbox showed it one folder & handed it two files.
+Both modes the function opens with now end in e. PHP sets O_CLOEXEC for that where the system has
+it, & ignores it where it has not. A command is handed no number for a handle, so nothing that runs
+could have been relying on one.
+IT WAS FOUND BY LOOKING, & NOTHING CHECKED FOR IT. What a sandboxed program can reach is the folders
+it is shown, the handles it is handed & the environment it is given. Only the first was ever listed.
+
+WHAT PHP OPENS WHEN IT IS HANDED A PATH, AS MEASURED. v4.3.1.
+The comment above enterFolderWithoutFollowing() said fopen() opens the whole path, which looks
+every folder up again. It may not look. PHP keeps where each path last led, & fopen(),
+file_get_contents(), hash_file() & file_put_contents() go there until clearstatcache(TRUE) has it
+forget every path. lstat(), stat(), scandir(), unlink() & rename() go where the path leads now.
+The comment says so now. What it concluded is unchanged. A caller compares the open handle with
+what lstat showed it, & creates no file by name in a folder held only by entering it.
+No line of code changed.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -998,6 +1365,72 @@ verifyGlobals worked out the served address before the connection was verified, 
 says whether it is encrypted, so every share link began http. establishEngineSession verifies the
 connection first. A comparison of the two trees' sessions over https found it, & a comparison
 over http would not have.
+
+THE PROTECTION PAGES OF THE KERNEL & THE ENGINE NAME NO APPLICATION. v4.3.1.
+The index.html in Resources/Kernel, Resources/Engine & its Cores & Managers folders was titled for
+the reference application, & sent a browser to that application's entry point after five seconds.
+In any other application that is an address the application does not have. The Engine holds no
+application's name or entry point, so each is a page that names nothing & goes nowhere.
+
+AN APPLICATION STARTS A WORKER OF ITS OWN THROUGH THE ENGINE. v4.3.1.
+The Workflow Core could start a PHP worker, & only for a workflow. An application with long work of
+its own, as a scan of a whole server is, had no way to start it that did not copy that function.
+startApplicationWorker() is that function with the workflow taken out. It starts the entry point
+with one argument beginning --app & one value, through setsid -f, & returns without waiting.
+IT STARTS NOTHING BUT AN ARGUMENT BEGINNING --app. The kernel hands such an argument to the
+application's handler ahead of every command of the Engine's, so nothing of the Engine's can be
+started this way, whatever calls it.
+THE VALUE IS A NAME & NEVER THE WORK. A command line is read by every account, so the value is
+letters, digits & dashes. What the work is stays wherever the application keeps it.
+NO MANAGER IS TOLD. The managers are the web server account's, & the first user of this is root.
+A manager cannot signal root's process, & root reads no manager's state. Whether work root starts
+should also be given a token of the budget is not decided, & nothing here prevents it.
+
+AN APPLICATION PUTS A COMMAND OF ITS OWN ON A SCHEDULE THROUGH THE ENGINE. v4.3.1.
+The Setup Core wrote the units of the listener & of the Environment Manager, each by a function of
+its own. An application with a command to run on a schedule, as a scan of a server is, had no way
+to have one written that did not copy those functions & write to /etc itself.
+$EngineTimerProvider names a function that returns such commands as data, & the Setup Core writes a
+service & a timer for each. The application writes no unit & runs no systemctl.
+EVERY FIELD IS HELD TO WHAT A UNIT MAY BE MADE OF. A unit is a file root's service manager obeys.
+A line break in a field would be a directive, & a percent sign or a dollar sign is where systemd
+begins a name of its own. So each field has its characters, the argument is one word beginning
+--app-, & the paths to PHP & to the application are refused where they hold anything else.
+Nothing is escaped, because nothing that would need escaping is written.
+A TIMER IS REFUSED WHOLE, & A CALENDAR FALLS BACK. A unit written from half of a record would run
+something nobody asked for. A calendar is the one field an administrator's configuration supplies,
+so one systemd cannot read becomes daily, with a warning, & the command still runs.
+NOTHING ENABLES A TIMER. Writing a unit changes nothing a server does. Enabling one puts a root
+process on a schedule, & that is printed & left to an administrator, as it is for the Environment Manager.
+A HOST UNIT IS GIVEN NO DIRECTIVE THAT HIDES ANYTHING. ProtectHome & PrivateTmp are right for the
+Environment Manager, which reads neither. A scanner of files that is told /home is empty would call
+it clean. So the reach is the application's to state, & a host unit is one command as root.
+A UNIT THAT IS A LINK IS NOT WRITTEN OVER. An administrator masks a unit by putting a link to
+/dev/null where it was. The kernel puts a file it writes in the place of whatever held its name, &
+never writes through a link, so writing the unit would have taken the mask away without a word.
+Neither unit is written where either is a link, & the timer is failed with a warning. Links that
+lead to units which are already as they should be need nothing written, & are left alone.
+WARNINGS, & NO NEW ERROR. A number in the Engine's ranges is the maintainer's to give. Every refusal
+here is a warning, & so is a unit that could not be written, which deserves a number beside 32015.
+WHAT IS NOT KNOWN. No unit this writes has been started by systemd in a test. The tests hold the
+text to the letter & have systemd-analyze read it. Whether a reload alone moves a running timer to
+a new calendar is not known either, so -fp prints the restart that is sure to.
+
+--setup --install-service DOES NOT FAIL AN APPLICATION FOR HAVING NO LISTENER. v4.3.1.
+The command exited 1 wherever the listener was skipped. An application that switches resource
+awareness off has no listener, so the command could only fail for it, whatever it wrote.
+A listener that is skipped because the application has none is no longer a failure. One that is
+wanted & skipped, as where systemd is not running, fails the command as it did.
+
+ONE PROTECTION PAGE, BUILT FROM A TEMPLATE. v4.3.1.
+The Engine had three: the files it distributes, the application's root index.html copied into each
+required directory on every request, & a page the Environment Core built inline, which put markup in a
+Core. The page is now one template component, Resources/Engine/UI/protectionPage.html, & the files the
+Engine distributes are that page rendered. Its logo is a data URI, because a page in a folder at any
+depth cannot name another file the server is sure to serve, & a broken image is a console error.
+A timer on the page was considered & declined. A fuzzer reads the status code & never runs the page's
+script, so a timer slows only a person, & a delay on the server holds an Apache worker for each request,
+which turns the page into the lever a denial of service needs.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1509,6 +1942,48 @@ round. An int that was 0 was called FALSE, & a bool that was FALSE was said to b
 --Require Resource Awareness-- is not ignored when resource awareness is off, it refuses everything,
 so its model carries a Conflict & --config lists it apart. It was raised as 31010, the number for
 an Engine that did not load, & ERROR_DESCRIPTIONS already gave the contradiction 31013.
+
+A FORMAT LIST NEVER OFFERS A FORMAT THE CORE REFUSES. v4.2.7.
+A list was offered as config.php wrote it, so one naming a refused extension drew a button whose
+request was refused. verifyGlobals() builds every list through withoutRefusedFormats(), which drops
+the format & names the setting in a warning. --config --repair never changes a value an
+administrator listed, so the warning is how a config.php written before v4.2.7 loses recipe & opf.
+The stream output list is built from the audio & video output lists once each has been through it,
+rather than read from config.php a second time, & the subtitle input list is lowercased like every
+other.
+
+A MENU NAMES ITS FAMILY. v4.2.8.
+convertFiles() asked the families in order & converted with the first whose lists held the pair. An
+interface draws a menu for every family that reads a file, & two can offer one output, so docx to pptx
+asked of the Markup menu went to the Document family, & LibreOffice makes no presentation of a text
+document. Each menu sends conversionFamily, & conversionFamilyFor() converts with that family where its
+pipeline serves the pair, & otherwise with the first family whose pipeline does. A pipeline's exclusion
+therefore moves a pair to the next family, which is how pdf to txt from the Document menu reaches
+Calibre. A workflow names no family & takes the same path without the first step.
+
+EVERY FAMILY HAS AN INPUT LIST & AN OUTPUT LIST. v4.2.8.
+The Document & Spreadsheet lists were each both, so a format LibreOffice reads & cannot write, such as
+WordPerfect, could not be offered. Each became two settings, as Presentation's had. The Archive family
+read --Supported Archive Formats-- for both directions while the archive menu was drawn from
+--Supported Dearchive Formats--, so a gz drew a menu that failed with 5006, & the Dearchive list is now
+its input list. The image, drawing & OpenSCAD lists, $UserImageArray, $UserDrawingArray &
+$UserSCADArray, were read by nothing but the interfaces once they read the input lists, & were retired.
+Model keeps its combined list until its importers are audited.
+
+A FAMILY MADE OF KINDS CLAIMS A PAIR ONLY WITHIN ONE. v4.3.0.
+The Document family's lists merged documents, spreadsheets, presentations & XPS, so it claimed docx to
+pptx & xlsx to docx, & LibreOffice, which writes nothing across them but a PDF, made nothing. Its menus
+offered only what one kind lists. applicationConversionFamilies() names its kinds third, &
+conversionFamilyClaims() holds a pair to one of them, so a request naming no family, as a workflow's
+does, reaches Pandoc for docx to pptx. Every pair conversionFamilyFor() chose for v4.2.8 was chosen again
+against the stock lists, & the seventeen that changed all moved from Document to Markup. Spreadsheets
+list pdf, which LibreOffice writes, so a workflow still converts one to pdf.
+
+THE STREAM FAMILY READS STREAMS. v4.3.0.
+Each of its lists held both the stream list & the audio & video outputs, so it claimed every audio &
+video pair. A request naming it sent an mp4 to the stream inspector, which refused it with 21001, & an
+mp3 to mp4 conversion, which no other family claims, reached it too. It reads $StreamArray & writes
+$StreamOutputArray, as its menu always offered.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1651,6 +2126,17 @@ image conversion, & every press of one failed. Each pipeline names what it canno
 page draws by $OfferedConversionTypes, which leaves out a type whose tool is not installed. $Allowed &
 $SupportedConversionTypes are not narrowed, because a file a server cannot convert is still one it
 can upload, archive, scan, share & delete.
+
+EVERY LANGUAGE PACK WAS READ AS A PAGE SHOWS IT. v4.2.6.
+A pack is PHP, so one that runs shows nothing wrong, & a string can still be wrong on the page. Each
+string was checked three ways. Every letter was matched to the scripts its language is written in,
+which found Chinese, Arabic, Greek & Sinhala letters inside Syriac words, a Hindi sentence in the
+Chinese pack & an English word in three Urdu strings. Every variable & placeholder English builds a
+string from was looked for in each translation, which found a Bengali count written as a number &
+two Chinese variables written inside the quotes. The sentences that count uploaded files were
+printed for many counts, which found sixteen languages whose words did not agree with the count,
+a sentence printed twice in Hindi & Italian, a Persian sentence that ended on a second verb, & a
+second copy of the opening sections in Polish.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2151,4 +2637,64 @@ names the error, & -v lists automatic updates among what is switched off.
 FOUND BY TESTING. Off by default, the four settings of updates were named in --config as having no
 effect on every new installation, in the very screen an administrator opens to turn updates on. Each
 carries NamedWhenChanged, as the settings of accounts do, so only one an administrator changed is named.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+--The Engine's Documents In An Application--
+
+AN APPLICATION ADDS TO A DOCUMENT OF THE ENGINE'S & TAKES NOTHING FROM IT.
+The Engine's documents are distributed with it, & an application built on it carries them. The
+first build of the second application cut the error catalogue down to the entries it could raise.
+It left out 192 of 325 & reworded four. The maintainer refused that. A document cut down for one
+application is cut down again, by hand, for every later Engine, & what the Engine distributes is
+what an administrator & the next developer expect to find. So every line the Engine distributes is
+kept, in its order, & an application's own lines are added among them. A script adds them to the
+Engine's own copy, & writes nothing where a line of the Engine's would be missing.
+
+THE ERROR CATALOGUE IS ADOPTED WHOLE.
+An entry for a pipeline an application does not carry is one it cannot raise, & it stays. Where an
+application raises one of the Engine's errors from a file of its own, that file is added to the
+entry's FILE list & nothing else in the entry changes. Its own guard has an entry beside the
+reference application's, under its own name, because one number may be documented under two
+labels. Its own errors are numbered above every block the Engine uses.
+
+THE NAMES THE ENGINE'S DOCUMENTS CITE PASS BY A LIST. v4.3.1.
+The documents explain the Engine by what the reference application does with it, & name its
+functions & its settings. In an application nothing defines those names, so the documents the
+Engine distributes failed the Engine's own check before the application had written a line. The
+checker's REFERENCE_NAMES & REFERENCE_LABELS list each name with the reason it is cited. The other
+course was to rewrite the documents, which takes from them.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+--The Error Catalogue--
+
+EVERY MESSAGE IS HELD TO ITS LINE. v4.3.1.
+Rule 17 had every warning & every error documented, & nothing checked it. HRProtect's
+tests/check_messages.php held its own files to the catalogue, & became the Engine's
+hrconvert2-messages-cli.php. Run on the whole kit it found 453 messages with no line, 13 calls it
+could not read & 4 lines no call raised. Each was documented or put right, rather than listed as
+an exception.
+
+A LENIENT MATCH HID WHAT IT SHOULD HAVE FOUND.
+A call & a line first agreed wherever something unknown on either side could stand for anything on
+the other. A call that began with a name & ended with a reason agreed with every line that ended
+the same way, so a refusal of a manifest entry passed for a workflow worker's. Something unknown
+now stands for up to two words, or for words around something unknown of the other side. Two is
+what a choice between it is & they are needs, & three let the subject of a sentence through again.
+
+A MESSAGE HELD IN A VARIABLE WAS READ FROM ITS NEAREST ASSIGNMENT.
+That read one branch of an if & passed the others unchecked, & a variable list() filled from
+another call was read from an older assignment. Every assignment that can reach the call is read
+now, back to one every way to it passes through, & one list() fills cannot be read at all. Reading
+every branch found the installer warning with texts it never warns with, so its failures are kept
+apart from its notices rather than a message that never happens documented.
+
+AN ERROR WHOSE NUMBER IS CHOSEN AS THE CODE RUNS WAS NOT CHECKED.
+The Archive & Scan pipelines pass a variable, & three of their errors had no line. The number is
+read the way a text is, & each it may be is held to its own lines.
+
+A CALL THAT LOGGED ONLY ANOTHER CALL'S NOTICE SAID NOTHING OF ITS OWN.
+The notice the kernel hands back names a path & a reason, & not what was being done. Each such call
+begins with a sentence of its own now, so the log says what failed & the catalogue can hold it.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------

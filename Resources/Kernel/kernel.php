@@ -14,7 +14,7 @@
 // / install secret & derives a visitor's session from it.
 // /
 // / File Information ...
-// / v4.2.4.
+// / v4.3.1.
 // / The kernel. An application's entry point requires it first & pins it exactly via $RequiredKernelVersion.
 // / Error 35000 is the direct load guard every component shares.
 // / It is a file of its own, so every application runs identical kernel code & compares it by version.
@@ -87,7 +87,7 @@ if (count(get_included_files()) < 2) die('ERROR!!! Kernel-35000, The kernel cann
 // / The version of this kernel.
 // / The application reads it with a pattern BEFORE requiring this file, so a mismatched
 // / kernel is never executed. It cannot use readComponentVersion for that, which is below.
-$KernelVersion = 'v4.2.4';
+$KernelVersion = 'v4.3.1';
 // / -----------------------------------------------------------------------------------
 
 // / -----------------------------------------------------------------------------------
@@ -196,6 +196,71 @@ function sanitize($Variable, $strict) {
   // / Manually clean up sensitive memory. Helps to keep track of variable assignments.
   purgeSensitiveMemory($EnableMemoryProtection, $strict, $key, $var);
   return array($Variable, $VariableIsSanitized); }
+// / -----------------------------------------------------------------------------------
+
+// / -----------------------------------------------------------------------------------
+// / A function to sanitize a path, which sanitize() cannot do.
+// / Accepts the path & whether to be strict, in that order. Returns the path & whether it was accepted, in that order.
+// / sanitize() removes what a name must not hold, & a path with anything removed names a different file.
+// / So a path is accepted whole & returned as it was given, or refused whole & returned empty.
+// / It refuses a control character, a path longer than PHP opens, & whatever PHP would take for a stream rather than a file.
+// / PHP reads two or more letters, digits, dots, plus signs or dashes before :// as the name of a stream wrapper, such as phar://, & data: alone as one.
+// / A file that is really named that way is reached by writing ./ before it.
+// / Set $strict to TRUE to also refuse a path that is not absolute, or that holds a part that is a dot, two dots or empty.
+// / It does not say that the path exists & it follows no link, so a caller still resolves a path that was typed.
+// / A path it accepted may hold a space, a quote or a dollar sign. It is quoted where it is handed to a shell & escaped where it is printed.
+function sanitizePath($Variable, $strict) {
+  // / Set variables.
+  global $EnableMemoryProtection;
+  $VariableIsSanitized = FALSE;
+  $pathParts = array();
+  $pathPart = '';
+  if (!is_bool($strict)) $strict = TRUE;
+  // / Only a string or a number can be a path.
+  if (is_string($Variable) or is_numeric($Variable)) {
+    $Variable = (string)$Variable;
+    $VariableIsSanitized = TRUE;
+    if (preg_match('/[\x00-\x1F\x7F]/', $Variable) === 1) $VariableIsSanitized = FALSE;
+    if (preg_match('//u', $Variable) === 1 && preg_match('/[\x{80}-\x{9F}]/u', $Variable) === 1) $VariableIsSanitized = FALSE;
+    if (preg_match('/^(?:[a-z0-9+.\-]{2,}:\/\/|data:)/i', $Variable) === 1) $VariableIsSanitized = FALSE;
+    if (strlen($Variable) >= PHP_MAXPATHLEN - 1) $VariableIsSanitized = FALSE;
+    if ($strict && $Variable !== '') {
+      $pathParts = explode(DIRECTORY_SEPARATOR, $Variable);
+      if (array_shift($pathParts) !== '') $VariableIsSanitized = FALSE;
+      if ($Variable !== DIRECTORY_SEPARATOR) foreach ($pathParts as $pathPart) if ($pathPart === '' or $pathPart === '.' or $pathPart === '..') $VariableIsSanitized = FALSE; } }
+  if (!$VariableIsSanitized) $Variable = '';
+  // / Manually clean up sensitive memory. Helps to keep track of variable assignments.
+  purgeSensitiveMemory($EnableMemoryProtection, $strict, $pathParts, $pathPart);
+  return array($Variable, $VariableIsSanitized); }
+// / -----------------------------------------------------------------------------------
+
+// / -----------------------------------------------------------------------------------
+// / A function to make text nobody vetted safe to print & to log, from v4.3.1.
+// / Accepts the text & whether to be strict, in that order. Returns the text with every control character shown as a question mark.
+// / The name of a file, & what a tool prints about one, is chosen by whoever made the file.
+// / A line break in it would forge a line of a log, & an escape sequence would have a terminal obey it.
+// / C1 control characters are replaced as well as C0 ones, because some terminals obey them as the start of a sequence.
+// / Text that is not UTF-8 has every byte outside printable ASCII replaced instead.
+// / Set $strict to TRUE to also cut text longer than 1000 bytes, where a character ends, & end it with three dots.
+// / It changes what is shown & nothing else. Text that names a file is still used byte for byte wherever the file is reached.
+function printableText($untrustedText, $strict) {
+  // / Set variables.
+  global $EnableMemoryProtection;
+  $PrintableText = '';
+  $trimmedBytes = 0;
+  if (!is_bool($strict)) $strict = TRUE;
+  // / Only a string, a number, a boolean or nothing can be shown. Anything else is shown as nothing.
+  if (is_scalar($untrustedText) or $untrustedText === NULL) $PrintableText = (string)$untrustedText;
+  if (preg_match('//u', $PrintableText) === 1) $PrintableText = (string)preg_replace('/[\x00-\x1F\x7F\x{80}-\x{9F}]/u', '?', $PrintableText);
+  else $PrintableText = (string)preg_replace('/[^\x20-\x7E]/', '?', $PrintableText);
+  if ($strict && strlen($PrintableText) > 1000) {
+    $PrintableText = substr($PrintableText, 0, 1000);
+    // / The cut may fall inside a character, which is four bytes at most, so up to three bytes are taken back.
+    for ($trimmedBytes = 0; $trimmedBytes < 3 && preg_match('//u', $PrintableText) !== 1; $trimmedBytes++) $PrintableText = substr($PrintableText, 0, -1);
+    $PrintableText = $PrintableText.'...'; }
+  // / Manually clean up sensitive memory. Helps to keep track of variable assignments.
+  purgeSensitiveMemory($EnableMemoryProtection, $strict, $trimmedBytes, $untrustedText);
+  return $PrintableText; }
 // / -----------------------------------------------------------------------------------
 
 // / -----------------------------------------------------------------------------------
@@ -1471,7 +1536,8 @@ function writeMissingConfiguration($applicationRoot, $configPath) {
   $SettingsWritten = 0;
   $bootstrapSetup = $bootstrapEngine = $engineConfigFile = '';
   $engineNames = $contractNames = array();
-  $engineConfigWasRead = $contractWasRead = $engineConfigWasRun = FALSE;
+  $engineConfigWasRead = $contractWasRead = $engineConfigWasRun = $environmentIsLoaded = FALSE;
+  $environmentNotice = '';
   $InstLoc = rtrim((string)$applicationRoot, DIRECTORY_SEPARATOR);
   $DirSep = DIRECTORY_SEPARATOR;
   $ApplicationName = defaultApplicationName();
@@ -1488,9 +1554,15 @@ function writeMissingConfiguration($applicationRoot, $configPath) {
   if ($engineConfigWasRead) $engineConfigWasRun = requireWithGlobals($engineConfigFile, array_merge($engineNames, $contractNames));
   require_once ($bootstrapEngine);
   require_once ($bootstrapSetup);
+  // / The Engine loads its Environment Core as it starts, from v4.3.1, & nothing here starts the Engine, so the Engine is asked to load it
+  // / here, because the generator reaches into it. One that is refused is said as a missing Setup Core is. An Engine from before v4.3.1
+  // / loaded its Environment Core as it was required, & has no loadEnvironmentCore().
+  if (function_exists('loadEnvironmentCore')) list ($environmentIsLoaded, $environmentNotice) = loadEnvironmentCore();
+  else $environmentIsLoaded = TRUE;
+  if (!$environmentIsLoaded) quickDie('No configuration file & no Environment Core to write one! '.$environmentNotice, 0);
   if (function_exists('generateConfigFile')) list ($ConfigWasWritten, $SettingsWritten) = generateConfigFile($configPath);
   // / Manually clean up sensitive memory. Helps to keep track of variable assignments.
-  purgeSensitiveMemory($EnableMemoryProtection, $bootstrapSetup, $bootstrapEngine, $engineConfigFile, $engineNames, $contractNames, $engineConfigWasRead, $contractWasRead, $engineConfigWasRun, $applicationRoot, $configPath);
+  purgeSensitiveMemory($EnableMemoryProtection, $bootstrapSetup, $bootstrapEngine, $engineConfigFile, $engineNames, $contractNames, $engineConfigWasRead, $contractWasRead, $engineConfigWasRun, $environmentIsLoaded, $environmentNotice, $applicationRoot, $configPath);
   return array($ConfigWasWritten, $SettingsWritten); }
 // / -----------------------------------------------------------------------------------
 
@@ -1504,6 +1576,7 @@ function writeMissingConfiguration($applicationRoot, $configPath) {
 // / The install secret is kept in Secrets below it, a folder that is root's & that only the web server account's group may enter.
 // / The Engine's establishEngineSession() narrows $ConvertLoc to a pooled session area later, so these are taken now, before it does.
 // / Staged holds what an administrator stages from a page for root to install, from v4.2.2.
+// / Events holds the record the Event Core keeps of what the application did & found, & only root may open it, from v4.3.1.
 // / The socket folder is pinned to the configured data location & never moves with a session, or a worker & a manager would look for
 // / each other in different places. It hangs off the root, not off Sessions, & is never inside the web root.
 // / See Documentation/ABOUT_MANAGED_LOCATIONS.txt.
@@ -1512,7 +1585,7 @@ function writeMissingConfiguration($applicationRoot, $configPath) {
 // / cache folder is used instead & a warning says so. A $HomeLoc an operator pointed somewhere of their own is kept.
 function establishDataLocations() {
   // / Set variables.
-  global $ConvertLoc, $HomeLoc, $DataRootLoc, $SessionLoc, $CacheLoc, $EngineDir, $SecretLoc, $WorkflowLoc, $AccountLoc, $UserLoc, $WorkflowStageLoc, $ManagerSocketDir, $EnableMemoryProtection;
+  global $ConvertLoc, $HomeLoc, $DataRootLoc, $SessionLoc, $CacheLoc, $EngineDir, $SecretLoc, $WorkflowLoc, $AccountLoc, $UserLoc, $WorkflowStageLoc, $EventLoc, $ManagerSocketDir, $EnableMemoryProtection;
   $LocationsAreDerived = FALSE;
   $homeTarget = '';
   $DataRootLoc = rtrim((string)$ConvertLoc, DIRECTORY_SEPARATOR);
@@ -1525,6 +1598,7 @@ function establishDataLocations() {
   $AccountLoc = $DataRootLoc.DIRECTORY_SEPARATOR.'Accounts';
   $UserLoc = $DataRootLoc.DIRECTORY_SEPARATOR.'Users';
   $WorkflowStageLoc = $DataRootLoc.DIRECTORY_SEPARATOR.'Staged';
+  $EventLoc = $DataRootLoc.DIRECTORY_SEPARATOR.'Events';
   if (!(function_exists('posix_geteuid') && posix_geteuid() === 0)) {
     $homeTarget = (isset($HomeLoc) && is_string($HomeLoc) && trim($HomeLoc) !== '') ? rtrim((string)$HomeLoc, DIRECTORY_SEPARATOR) : '';
     if ($homeTarget === '' or $homeTarget === rtrim((string)$ConvertLoc, DIRECTORY_SEPARATOR)) {
@@ -1675,20 +1749,23 @@ function verifyInstallationState($entryPointFile, $applicationVersion, $required
 // / -v is what an operator runs to find out what is wrong, so it answers when the Engine cannot load.
 // / The Engine prints the whole report with showVersionReport, & everything in it but these lines needs the Engine.
 // / So this names the kernel, the Engine the application requires & the one that was found, & the configuration, & says what to do.
+// / An Engine of the version required loaded & did not start, as one does whose Environment Core was refused, from v4.3.1, & that is said.
 // / The updater accepts an installation whose -v prints the words Core version, so that line ends this report as it ends the Engine's.
 function showKernelVersionReport() {
   // / Set variables.
   global $ApplicationName, $EngineApplicationVersion, $KernelVersion, $RequiredKernelVersion, $RequiredEngineVersion, $ConfigVersion, $RequiredConfigVersion, $Lol, $EnableMemoryProtection;
   $ReportWasPrinted = FALSE;
   $applicationVersion = $engineFound = $lineBreak = '';
+  $engineDidNotStart = FALSE;
   $lineBreak = (isset($Lol) && is_string($Lol) && $Lol !== '') ? $Lol : PHP_EOL;
   $applicationVersion = ltrim((string)$EngineApplicationVersion, 'vV');
   $engineFound = ltrim((string)readComponentVersion('Engine'.DIRECTORY_SEPARATOR.'engine.php', 'EngineVersion'), 'vV');
   print($lineBreak.applicationLabel().' '.$applicationVersion.$lineBreak);
   print('  Kernel     '.ltrim((string)$KernelVersion, 'vV').', requires '.ltrim((string)$RequiredKernelVersion, 'vV').$lineBreak);
-  print('  Engine     '.$engineFound.', requires '.ltrim((string)$RequiredEngineVersion, 'vV').$lineBreak);
+  $engineDidNotStart = ($engineFound !== '' && $engineFound === ltrim((string)$RequiredEngineVersion, 'vV'));
+  print('  Engine     '.$engineFound.', requires '.ltrim((string)$RequiredEngineVersion, 'vV').($engineDidNotStart ? ', & did not start' : '').$lineBreak);
   print('  Config     '.$ConfigVersion.', requires '.$RequiredConfigVersion.' or later'.$lineBreak);
-  print($lineBreak.'The Engine could not be loaded, so nothing else can be reported.'.$lineBreak);
+  print($lineBreak.($engineDidNotStart ? 'The Engine loaded & did not start, so nothing else can be reported. Its log says why.' : 'The Engine could not be loaded, so nothing else can be reported.').$lineBreak);
   print('Restore Resources/Engine from the release this application came from & run -v again.'.$lineBreak);
   print($lineBreak.'1 check(s) failed. See Documentation/ERROR_DESCRIPTIONS.txt.'.$lineBreak);
   // / The updater in every release from v3.9.9 to v4.0.0 accepts a new installation only when its -v prints the words Core version.
@@ -1696,7 +1773,7 @@ function showKernelVersionReport() {
   print($lineBreak);
   $ReportWasPrinted = TRUE;
   // / Manually clean up sensitive memory. Helps to keep track of variable assignments.
-  purgeSensitiveMemory($EnableMemoryProtection, $applicationVersion, $engineFound, $lineBreak);
+  purgeSensitiveMemory($EnableMemoryProtection, $applicationVersion, $engineFound, $lineBreak, $engineDidNotStart);
   return $ReportWasPrinted; }
 // / -----------------------------------------------------------------------------------
 
@@ -1788,7 +1865,7 @@ function showCommandLineHelp($entryPointName) {
 
 // / -----------------------------------------------------------------------------------
 // / A function to hand an argument beginning --app to the handler the application's contract names.
-// / Accepts the argument list & the command, in that order. Returns the exit status, 0 where a handler took it & 2 where none is declared.
+// / Accepts the argument list & the command, in that order. Returns the exit status, which is the handler's own where it returns one, 0 where it returns nothing & 2 where none is declared.
 // / Everything beginning --app belongs to the application, so the Engine never has to know what the application accepts & no argument of either can collide.
 // / It is checked ahead of every command of the Engine's, so that no command the Engine adds later can claim it, & with or without an Engine,
 // / because whether it needs the Engine is the application's business.
@@ -1802,20 +1879,30 @@ function runApplicationArgument($cliArguments, $cliCommand) {
   $CommandStatus = 0;
   $applicationHandler = $appTarget = $appSecondTarget = '';
   $appArgumentParts = array();
+  $appSecondIndex = 2;
+  $handlerStatus = NULL;
   $applicationHandler = (isset($EngineApplicationArgumentHandler) && is_string($EngineApplicationArgumentHandler)) ? trim($EngineApplicationArgumentHandler) : '';
   if ($applicationHandler !== '' && function_exists($applicationHandler)) {
     logEntry('The application argument '.$cliCommand.' was handed to '.$applicationHandler.'.');
     $appArgumentParts = explode('=', trim((string)$cliArguments[0]), 2);
     $appTarget = isset($appArgumentParts[1]) ? trim($appArgumentParts[1]) : (isset($cliArguments[1]) ? trim((string)$cliArguments[1]) : '');
-    $appSecondTarget = isset($cliArguments[2]) ? trim((string)$cliArguments[2]) : '';
-    $applicationHandler($cliCommand, $appTarget, $appSecondTarget); }
+    // / The second target is the argument after the first, so it is one place earlier where the first was written after an equal sign.
+    $appSecondIndex = isset($appArgumentParts[1]) ? 1 : 2;
+    $appSecondTarget = isset($cliArguments[$appSecondIndex]) ? trim((string)$cliArguments[$appSecondIndex]) : '';
+    $handlerStatus = $applicationHandler($cliCommand, $appTarget, $appSecondTarget);
+    // / The status is the handler's to set. A handler that returns a whole number from 0 to 255 has set it, & one that returns nothing has succeeded.
+    // / Anything else is not a status, so the command is reported as failed rather than passed off as a success.
+    if (is_int($handlerStatus) && $handlerStatus >= 0 && $handlerStatus <= 255) $CommandStatus = $handlerStatus;
+    else if ($handlerStatus !== NULL) {
+      warningEntry('The handler '.$applicationHandler.' returned something other than an exit status for '.$cliCommand.', so the command is reported as failed.');
+      $CommandStatus = 1; } }
   else {
     warningEntry('The application argument '.$cliCommand.' was supplied & this application declares no handler.');
     $CommandStatus = 2;
     print($Lol.'This application accepts no '.$cliCommand.' command.'.$Lol);
     print('Arguments beginning --app belong to the application & this one declares none.'.$Lol.$Lol); }
   // / Manually clean up sensitive memory. Helps to keep track of variable assignments.
-  purgeSensitiveMemory($EnableMemoryProtection, $applicationHandler, $appTarget, $appSecondTarget, $appArgumentParts, $cliArguments, $cliCommand);
+  purgeSensitiveMemory($EnableMemoryProtection, $applicationHandler, $appTarget, $appSecondTarget, $appArgumentParts, $appSecondIndex, $handlerStatus, $cliArguments, $cliCommand);
   return $CommandStatus; }
 // / -----------------------------------------------------------------------------------
 
@@ -1825,7 +1912,8 @@ function runApplicationArgument($cliArguments, $cliCommand) {
 // / Every command but -v, -h & --app reaches into the Engine for managers, dependencies, configuration or cleaning. Calling into a
 // / component that is not loaded is an undefined function, which tells an operator nothing & leaves no log line behind.
 // / Refusing here produces a sentence they can act on instead, & the refusal is logged.
-// / A drop-in unpacked beside the loader holds no Engine where its release left the Engine as it was.
+// / A drop-in unpacked beside the loader holds no Engine where its release left the Engine as it was, & only part of one where its release
+// / changed the Engine & left a Core as it was. Either way the remedy is the same, from v4.3.1, because neither Engine can run there.
 // / A drop-in carries only the files that changed, & once the application is installed the folder the web server serves holds the loader & little else.
 // / The remedy is to unpack it where the installation is, & a new Engine would only lead to -fp saying so.
 // / Otherwise the remedy is named, because there is no command that applies it. Every repair path reaches into the Engine as well, so an
@@ -1841,12 +1929,12 @@ function refuseCommandWithoutEngine($cliCommand, $entryPointName) {
   print($Lol.'This command needs the Engine, which could not be loaded.'.$Lol);
   $engineIsMissing = !is_file($InstLoc.DIRECTORY_SEPARATOR.'Resources'.DIRECTORY_SEPARATOR.'Engine'.DIRECTORY_SEPARATOR.'engine.php');
   $installationIsElsewhere = ((string)@realpath($InstLoc) !== (string)@realpath((string)$ApplicationLoc) && is_file((string)$ApplicationLoc.DIRECTORY_SEPARATOR.$entryPointName));
-  if ($engineIsMissing && $installationIsElsewhere) {
-    print('This folder holds no Engine. The installation is '.$ApplicationLoc.'.'.$Lol);
+  if ($installationIsElsewhere) {
+    print(($engineIsMissing ? 'This folder holds no Engine.' : 'The Engine in this folder cannot run.').' The installation is '.$ApplicationLoc.'.'.$Lol);
     print('Unpack a drop-in into '.$ApplicationLoc.' & run -fp there.'.$Lol.$Lol); }
   else {
     print('Run  php '.$entryPointName.' -v  to see which component failed.'.$Lol);
-    print('A mismatched Engine is a partial update. Replace Resources/Engine/engine.php'.$Lol);
+    print('A mismatched Engine, or one that did not start, is a partial update. Replace Resources/Engine'.$Lol);
     print('with the copy from this core\'s release. Every repair command needs the Engine.'.$Lol.$Lol); }
   // / Manually clean up sensitive memory. Helps to keep track of variable assignments.
   purgeSensitiveMemory($EnableMemoryProtection, $engineIsMissing, $installationIsElsewhere, $cliCommand, $entryPointName);
@@ -1979,6 +2067,67 @@ function folderIsHeldForRoot($folderPath) {
 // / -----------------------------------------------------------------------------------
 
 // / -----------------------------------------------------------------------------------
+// / A function to make a folder the working folder of the process without following anything another account planted.
+// / Accepts the absolute path of the folder. Returns whether the process is now in it & the reason it is not, in that order.
+// /
+// / folderIsHeldForRoot() answers for a folder nothing but root can replace, & root works by name only there.
+// / This is for the folders it cannot answer for, such as one in an account's own home, where that account can swap any
+// / folder on the way for a link between two things root does by name.
+// / The working folder is not a name. It is the folder itself, so once the process is in it, a name inside it is reached
+// / without any folder above it being looked up again.
+// / The walk starts at the filesystem root & enters one name at a time. Each name is examined with lstat first, & must be a
+// / folder & not a link. Once it is entered, the folder the process is in is compared with what was examined, by device &
+// / inode, so a link swapped in between the look & the step is caught rather than followed.
+// / PHP remembers what it last learned about a name, & the same name means a different thing in every folder, so what it
+// / remembers is forgotten before every look.
+// /
+// / PHP hands lstat, stat, link, unlink, rename, mkdir, rmdir & scandir a relative name as it was written, so each of them acts inside the folder held.
+// / scandir follows a link at the name it is given, so a caller lists the folder it is in, as a dot, & never a name inside it.
+// / PHP does not do that for fopen. It joins a relative name to the path of the working folder & opens the whole path.
+// / It keeps where each path last led, & opens that, so what it opens is neither the name in the folder held nor certainly
+// / where the path leads now. file_get_contents, hash_file & file_put_contents do the same, & only clearstatcache(TRUE)
+// / has PHP forget every path. A caller that opens a file here compares the open handle with what lstat showed it,
+// / by device & inode, as readFileWithoutFollowing() does, & never creates a file by name in a folder held only this way.
+// /
+// / A caller that fails here is left wherever the walk stopped, so a caller that goes on goes back to a folder it knows.
+// / A PHP built to run threads keeps a working folder of its own for each thread, which holds nothing, so it is refused.
+function enterFolderWithoutFollowing($folderPath) {
+  // / Set variables.
+  global $EnableMemoryProtection;
+  $FolderWasEntered = FALSE;
+  $EntryNotice = '';
+  $folderParts = $partStatus = $hereStatus = array();
+  $folderPart = $walkedPath = '';
+  $folderPath = rtrim((string)$folderPath, DIRECTORY_SEPARATOR);
+  if (PHP_ZTS) $EntryNotice = 'This PHP keeps a working folder for each thread, so a folder cannot be held.';
+  else if ($folderPath !== '' && substr($folderPath, 0, 1) !== DIRECTORY_SEPARATOR) $EntryNotice = $folderPath.' is not an absolute path.';
+  else if (strpos($folderPath, "\0") !== FALSE) $EntryNotice = 'The path holds a byte no path may.';
+  else if (!@chdir(DIRECTORY_SEPARATOR)) $EntryNotice = 'The filesystem root could not be entered.';
+  else {
+    $FolderWasEntered = TRUE;
+    $folderParts = array_values(array_filter(explode(DIRECTORY_SEPARATOR, $folderPath), 'strlen'));
+    foreach ($folderParts as $folderPart) {
+      $walkedPath = $walkedPath.DIRECTORY_SEPARATOR.$folderPart;
+      clearstatcache(TRUE);
+      $partStatus = @lstat($folderPart);
+      if ($folderPart === '.' or $folderPart === '..') $EntryNotice = $folderPath.' is not a plain path.';
+      else if (!is_array($partStatus)) $EntryNotice = $walkedPath.' does not exist.';
+      else if (((int)$partStatus['mode'] & 0170000) === 0120000) $EntryNotice = $walkedPath.' is a link.';
+      else if (((int)$partStatus['mode'] & 0170000) !== 0040000) $EntryNotice = $walkedPath.' is not a folder.';
+      else if (!@chdir($folderPart)) $EntryNotice = $walkedPath.' could not be entered.';
+      else {
+        clearstatcache(TRUE);
+        $hereStatus = @stat('.');
+        if (!is_array($hereStatus) or $hereStatus['dev'] !== $partStatus['dev'] or $hereStatus['ino'] !== $partStatus['ino']) $EntryNotice = $walkedPath.' changed while it was being entered.'; }
+      if ($EntryNotice !== '') {
+        $FolderWasEntered = FALSE;
+        break; } } }
+  // / Manually clean up sensitive memory. Helps to keep track of variable assignments.
+  purgeSensitiveMemory($EnableMemoryProtection, $folderParts, $partStatus, $hereStatus, $folderPart, $walkedPath, $folderPath);
+  return array($FolderWasEntered, $EntryNotice); }
+// / -----------------------------------------------------------------------------------
+
+// / -----------------------------------------------------------------------------------
 // / A function to write a file without following anything another account planted.
 // / Accepts the destination path, the contents & the mode the file is created with.
 // / Returns a success boolean & the reason for a failure, in that order.
@@ -2034,6 +2183,9 @@ function writeFileWithoutFollowing($targetPath, $fileContents, $fileMode) {
 // / The open handle is compared with what was examined, by device & inode, so a link swapped in between is caught.
 // / The caller writes through the handle for as long as it runs, so the name is never resolved again.
 // / Root opens only in a folder folderIsHeldForRoot holds, for the reason given there.
+// / Each is opened with e, from v4.3.1, which has the system close the handle in every command this process goes on to run.
+// / A handle that is not closed is handed to that command, & to whatever it runs. Root's logfile & a lock are held this way,
+// / & a program run in a sandbox to read a hostile file was handed both, to write to as it liked.
 function openFileWithoutFollowing($filePath, $fileMode) {
   // / Set variables.
   global $EnableMemoryProtection;
@@ -2048,14 +2200,14 @@ function openFileWithoutFollowing($filePath, $fileMode) {
   if (!$folderIsHeld) $OpenNotice = (string)$filePath.' was not opened. '.$holdNotice;
   else if (!is_array($pathStatus)) {
     $previousMask = umask(0777 & ~((int)$fileMode));
-    $FileHandle = @fopen((string)$filePath, 'x');
+    $FileHandle = @fopen((string)$filePath, 'xe');
     umask($previousMask);
     if ($FileHandle === FALSE) $OpenNotice = (string)$filePath.' could not be created.';
     else $FileWasCreated = TRUE; }
   else if (((int)$pathStatus['mode'] & 0170000) !== 0100000) $OpenNotice = (string)$filePath.' is not a plain file & was not opened.';
   else if ((int)$pathStatus['nlink'] !== 1) $OpenNotice = (string)$filePath.' has more than one name & was not opened.';
   else {
-    $FileHandle = @fopen((string)$filePath, 'r+');
+    $FileHandle = @fopen((string)$filePath, 'r+e');
     if ($FileHandle === FALSE) $OpenNotice = (string)$filePath.' could not be opened.';
     else {
       $handleStatus = @fstat($FileHandle);
@@ -2423,7 +2575,7 @@ function prepareDataLocationAsRoot($dataLocation) {
         // / The location was created a moment ago in a folder only root can change, so the
         // / name cannot have been swapped, & changeOwnerWithoutFollowing confirms that first.
         list ($ownerWasChanged, $ownerNotice) = changeOwnerWithoutFollowing($dataLocation, 'root', 'root');
-        if (!$ownerWasChanged) warningEntry($ownerNotice);
+        if (!$ownerWasChanged) warningEntry('The data location '.$dataLocation.' was created & could not be given to root. '.$ownerNotice);
         $LocationExists = TRUE;
         warningEntry('The data location did not exist & was created at '.$dataLocation.'.'); } } }
   // / Manually clean up sensitive memory. Helps to keep track of variable assignments.
@@ -2999,10 +3151,10 @@ function resolveInstallSecretAsRoot($secretFile, $requiredSecretVersion, $rotati
           // / Otherwise the key was found in a copy, which still carries it, so it is only warned
           // / about, & whether the web server account reads the key is judged once every copy is
           // / settled, below.
-          if (!$copyWasWritten && $keptCopy === $preferredCopy && ($sourceFile === '' or $rotationRequested or $keyWasGenerated)) errorEntry($writeFailure, 31020, FALSE);
+          if (!$copyWasWritten && $keptCopy === $preferredCopy && ($sourceFile === '' or $rotationRequested or $keyWasGenerated)) errorEntry($writeFailure.' It is the copy the web server account reads first, & it does not carry the key root holds.', 31020, FALSE);
           else if (!$copyWasWritten && $keptCopy === $preferredCopy) warningEntry($writeFailure.' The copy at '.$sourceFile.' still carries the key, & the next command run as root tries again.');
           // / A copy that is not there carries nothing & is only named.
-          else if (!$copyWasWritten && !file_exists($keptCopy) && !is_link($keptCopy)) warningEntry($writeFailure);
+          else if (!$copyWasWritten && !file_exists($keptCopy) && !is_link($keptCopy)) warningEntry($writeFailure.' Nothing was at that name, so no other key can be found there.');
           // / Another copy not known to carry the key, because it carries another, none, or could not
           // / be trusted to be read, & that could not be written goes, once the web server account
           // / can read the key in the copy it reads first, so no other key can ever be found there.
@@ -3122,9 +3274,12 @@ function resolveSecretFile($secretFile, $requiredSecretVersion) {
       $strayOutput = ob_get_clean();
       $detectedSecretVersion = ltrim(trim((string)$SecretVersion), 'vV'); }
     // / A file that emitted anything did not parse as PHP & cannot be trusted or reused.
+    // / It is named here, because the removal below names only a file nothing has been said of yet.
     if ($strayOutput !== '') {
       $SecretKey = '';
-      $rotationNotice = 'The secret file at '.$secretFile.' emitted '.strlen($strayOutput).' byte(s) instead of parsing as PHP. It is malformed & is being replaced.'; }
+      $rotationNotice = 'The secret file at '.$secretFile.' emitted '.strlen($strayOutput).' byte(s) instead of parsing as PHP. It is malformed & is being replaced.';
+      if ($loggingIsReady) warningEntry($rotationNotice);
+      else error_log('WARNING!!! '.applicationLabel().': '.$rotationNotice); }
     else if (!empty($SecretKey) && strlen($SecretKey) === 64 && $detectedSecretVersion !== '' && $detectedSecretVersion === $cleanRequiredVersion) $existingIsUsable = TRUE; }
   // / The web server account reports a file it cannot use & leaves it for root to replace.
   if (file_exists($secretFile) && !$existingIsUsable && !$creationIsPermitted) {
@@ -3356,9 +3511,11 @@ function establishInstallSecret($applicationSlug) {
     // / The folder is the web server account's, so root removes it with removeFileWithoutFollowing.
     if ($SecretIsReady && (file_exists($legacySecretFile) or is_link($legacySecretFile))) {
       list ($legacyWasRemoved, $legacyNotice) = removeFileWithoutFollowing($legacySecretFile);
-      $legacyNotice = $legacyWasRemoved ? 'The legacy secret file at '.$legacySecretFile.' was removed.' : 'The legacy secret file at '.$legacySecretFile.' could not be removed. '.$legacyNotice;
-      if (isset($LogFile) && is_string($LogFile) && $LogFile !== '') warningEntry($legacyNotice);
-      else error_log('WARNING!!! '.applicationLabel().': '.$legacyNotice); } }
+      // / Each outcome is a sentence of its own, so the catalogue holds each, & the error log takes it where no logfile is open yet.
+      if ($legacyWasRemoved && isset($LogFile) && is_string($LogFile) && $LogFile !== '') warningEntry('The legacy secret file at '.$legacySecretFile.' was removed.');
+      else if (isset($LogFile) && is_string($LogFile) && $LogFile !== '') warningEntry('The legacy secret file at '.$legacySecretFile.' could not be removed. '.$legacyNotice);
+      else if ($legacyWasRemoved) error_log('WARNING!!! '.applicationLabel().': The legacy secret file at '.$legacySecretFile.' was removed.');
+      else error_log('WARNING!!! '.applicationLabel().': The legacy secret file at '.$legacySecretFile.' could not be removed. '.$legacyNotice); } }
   // / A per user secret lives in a folder of its own for each account, with that account's
   // / logs beside it. The folder is created if it does not exist, because this may be the
   // / first thing the account has ever asked this application to do. A folder that cannot

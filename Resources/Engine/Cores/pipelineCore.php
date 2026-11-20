@@ -1058,8 +1058,8 @@ function runConversion($conversionFamily, $pathname, $newPathname, $extension, $
         if (!$outputIsUsable) {
           $ConversionSuccess = FALSE;
           $ConversionErrors = TRUE;
-          if (count($candidateFolders) > $attemptCount) warningEntry($outputNotice);
-          else errorEntry($outputNotice, 34010, FALSE); } }
+          if (count($candidateFolders) > $attemptCount) warningEntry('The '.$candidateFolder.' pipeline\'s result was refused, so the next pipeline that claims the conversion is tried. '.$outputNotice);
+          else errorEntry('The '.$candidateFolder.' pipeline\'s result was refused, & no other pipeline claims the conversion. '.$outputNotice, 34010, FALSE); } }
       if ($ConversionSuccess) break;
       // / A failure that has another candidate behind it is a warning, never an error.
       // / The candidate already logged why it failed under its own name.
