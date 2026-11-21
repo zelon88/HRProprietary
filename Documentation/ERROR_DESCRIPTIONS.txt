@@ -237,10 +237,33 @@ ERROR DESCRIPTION
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 ERROR MESSAGE
+  ERROR!!! Starter-2: This file cannot process your request! Please submit your request to app.php instead!
+
+FILE
+  /Resources/versionInfo.php
+  /Resources/Contract/config-template.php
+  /Resources/Contract/depends.php
+
+FATAL
+  YES
+
+LOGGED
+  NO
+
+ERROR DESCRIPTION
+  The Starter's error 2, from v4.3.2. A file of the Starter's own was requested directly, rather than read by app.php.
+  config.php is written from the Starter's half of the template, so it carries the same guard.
+  Nothing is wrong. Something asked for a file it should not have.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+ERROR MESSAGE
   ERROR!!! <TIMESTAMP>, <APPLICATION_NAME>-3, <SESSION_IDENTIFIER>: Could not set the execution timer!
 
 FILE
   convertCore.php
+  app.php
 
 FATAL
   YES
@@ -263,6 +286,7 @@ ERROR MESSAGE
 
 FILE
   convertCore.php
+  app.php
 
 FATAL
   YES
@@ -286,6 +310,7 @@ ERROR MESSAGE
 
 FILE
   convertCore.php
+  app.php
 
 FATAL
   YES
@@ -311,6 +336,7 @@ ERROR MESSAGE
 
 FILE
   convertCore.php
+  app.php
 
 FATAL
   YES
@@ -332,6 +358,7 @@ ERROR MESSAGE
 
 FILE
   convertCore.php
+  app.php
 
 FATAL
   YES
@@ -352,6 +379,7 @@ ERROR MESSAGE
 
 FILE
   convertCore.php
+  app.php
 
 FATAL
   YES
@@ -372,6 +400,7 @@ ERROR MESSAGE
 
 FILE
   convertCore.php
+  app.php
 
 FATAL
   YES
@@ -7232,7 +7261,7 @@ LOGGED
 ERROR DESCRIPTION
   The Pipeline Core loaded and passed its own version check, but not one of the pipelines it accepts could be verified.
   A dispatcher with nothing behind it is worse than no dispatcher at all, so the Pipeline Core stands itself down when this happens.
-  An application that accepts no pipeline at all causes this too. A warning naming $EngineAcceptedPipelines is written first in that case.
+  An application that accepts no pipeline at all converts nothing, & from v4.3.2 that raises nothing & -v says NONE. Until then it raised this too.
   No conversion of any kind will succeed for the remainder of the request.
   Uploading, downloading, deleting, archiving and virus scanning all continue to work normally.
   This error is not fatal because a user who cannot read the page cannot report the problem.
@@ -7501,8 +7530,6 @@ WARNINGS ABOUT PIPELINES
     WARNING!!! The application's <LIST> pins <NAME> to something that is not a version. It was refused.
       <LIST> is the list of accepted pipelines or of accepted shared modules, which Resources/Contract/app-engine-config.php sets.
       A bad entry costs that entry & nothing else.
-    WARNING!!! This application accepts no pipeline. They are named in $EngineAcceptedPipelines, which <FILE_PATH> sets.
-      No pipeline is read, & 34001 follows it. What is missing is the list, & not anything in a pipeline's folder.
     WARNING!!! A pipeline asked for the shared module <NAME>, which this Pipeline Core does not accept.
     WARNING!!! The shared module <NAME> is not installed at <FILE_PATH>.
     WARNING!!! The shared module <NAME> could not be read.
@@ -7591,6 +7618,26 @@ ERROR DESCRIPTION
   It names the application rather than the Engine, because the file is the application's own data.
   Nothing is wrong. Something asked for a file it should not have.
   Undocumented until v3.9.9, when the error number check learned to read a plain die.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+ERROR MESSAGE
+  ERROR!!! Starter-35000, An engine configuration cannot be loaded directly!
+
+FILE
+  /Resources/Contract/app-engine-config.php
+
+FATAL
+  YES
+
+LOGGED
+  NO
+
+ERROR DESCRIPTION
+  The Starter's Engine configuration was requested directly, rather than read by the Engine, from v4.3.2.
+  It names the Starter rather than the Engine, because the file is the Starter's own data.
+  Nothing is wrong. Something asked for a file it should not have.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -8038,9 +8085,10 @@ WARNINGS ABOUT WORKFLOWS
       files it would delete may be the only copies of what that step failed to make. The workflow ends as failed, with the reason
       incomplete, & nothing is deleted. The entries before this one name each error. Fix what failed & run the workflow again.
     WARNING!!! The Workflow Core is unavailable. No workflow can run until it is repaired.
+    WARNING!!! A workflow worker was started without a session it can continue.
+  The core raises these, from convertCore.php.
     WARNING!!! A workflow was requested & the Workflow Core is unavailable.
     WARNING!!! A workflow was requested & workflows are disabled.
-    WARNING!!! A workflow worker was started without a session it can continue.
     WARNING!!! A workflow's virus scan report could not be kept beside the files it scanned.
     WARNING!!! A request carried <INPUT> as something other than text, & it was refused.
       From v4.1.5. streamBaseURL, userURLDownload, workflowDocument & workflowCheck are read as text, & so is
@@ -10594,6 +10642,7 @@ WARNINGS ABOUT INSTALLING THE APPLICATION
   The Setup Core raises these, from Resources/Engine/Cores/setupCore.php, as -fp or --setup --install-complete installs the tree it
   ran from into Application in the data location, & as -fp publishes what the hosted location serves. Only the entries the contract
   names in $EngineApplicationLayout are copied, into a folder beside Application only root can enter, & renamed into place.
+  The installation it replaces is moved aside first, & nothing of it is removed before the new one is in place, from v4.3.2.
     WARNING!!! The folder the application lives in, <FOLDER>, can be changed by an account other than root, so nothing was installed. <ADDITIONAL_DATA>
     WARNING!!! The running tree at <FOLDER> can be changed by an account other than root, so it was not installed. <ADDITIONAL_DATA>
       Root installs only a tree it trusts, into a folder only root can change, & what follows names what is in the way. The first is
@@ -10611,13 +10660,32 @@ WARNINGS ABOUT INSTALLING THE APPLICATION
     WARNING!!! The running tree holds no <ENTRY_POINT>, so it was not installed.
       The staged copy could not be made, an entry could not be copied, as what follows says, or the copy lacks the entry point. The
       staged copy is removed & the installation is unchanged. A full disk or a read only mount does the first two.
+    WARNING!!! What an earlier installation or update left at <FOLDER> could not be removed, so the installation at <FOLDER> was not moved aside. <ADDITIONAL_DATA>
+      An installation the backup cannot hold waits at Application.old until the new one is in place, & an update moves the one it
+      replaces to the same name, so a run of either that stopped part way can leave one there. It is removed before the installation
+      is moved there, & what follows says why it could not be. Nothing was moved or removed, so the installation is unchanged. Remove
+      Application.old by hand & run -fp again.
     WARNING!!! The installation at <FOLDER> could not be moved aside, so the new one was not put in its place.
-      The installation is kept in the backup location before the new one takes its name, & removed where the backup cannot hold it.
-      Neither could be done, so the installation is unchanged.
+      The installation is moved to the backup location before the new one takes its name, or to Application.old where the backup
+      cannot hold it. Neither could be done, so the installation is unchanged. An Application that resolves to a system folder is
+      never moved.
+    WARNING!!! The staged installation could not be moved into <FOLDER>, so the installation it would have replaced was put back.
+      The installation had been moved aside & the new copy could not take its name, so the installation was moved back. It is
+      unchanged, & the staged copy is removed. The tree the command ran from is unchanged too, so -fp can be run from it again.
+      Until v4.3.2 an installation the backup could not hold was removed before the new copy was moved, & this left Application
+      missing.
+    WARNING!!! The staged installation could not be moved into <FOLDER>, & the installation it would have replaced could not be put back from <FOLDER>. Move it back by hand.
+      Neither the new copy nor the installation could take the name, so Application is missing. Nothing of the installation was
+      removed. It is whole in the folder named, & moving that folder to Application as root puts it back. The staged copy is removed.
     WARNING!!! The staged installation could not be moved into <FOLDER>.
-      The installation had been moved to the backup location, or removed where the backup could not hold it, & the new copy could not
-      take its name, so Application is missing & the staged copy is removed. The tree the command ran from is unchanged. Run -fp from it
-      again, or put the backup back by hand.
+      Application held nothing, so there was nothing to put back. The staged copy is removed, & the tree the command ran from is
+      unchanged.
+    WARNING!!! The installation at <FOLDER> is in place, & its mode could not be set to 0755. The installed copy's -fp sets it.
+      The new installation has its name & is installed. The -fp the installed copy runs next gives every folder in it its mode.
+      Until v4.3.2 this was reported as a staged installation that could not be moved, though it had been.
+    WARNING!!! The installation it replaced is left at <FOLDER>, & could not be removed. <ADDITIONAL_DATA> Remove it by hand.
+      The new installation is in place. The one it replaced waited at Application.old because the backup could not hold it, & what
+      follows says why it could not be removed. Nothing runs from it.
     WARNING!!! The hosted location reported <STATE>. <ADDITIONAL_DATA>
       The hosted location is the folder the web server serves, which holds the loader in place of the entry point, the protection page,
       the static files a browser fetches & DATA. <STATE> is FAILED where a name could not be written, REFUSED where it is a link, a
@@ -11246,4 +11314,17 @@ WARNINGS ABOUT THE CORE'S FEATURES
     WARNING!!! ImageMagick would not report its configuration path, so <FOLDER> was located by search. Confirm it is the directory this build actually reads.
       The policy the application writes for ImageMagick goes where ImageMagick reads its configuration. ImageMagick did not say where
       that is, so the folder was found by looking. A policy written where this build does not read does nothing.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+WARNINGS ABOUT THE STARTER
+  A warning carries no error number & never halts anything. Each says what happened & what was done about it.
+  The Starter raises these, from app.php. Each is from v4.3.2.
+    WARNING!!! The application argument <COMMAND> is not one the Starter accepts.
+      An argument beginning --app is the application's, & the kernel hands it to the Starter's handler. The Starter has one
+      command, --app-hello, so any other is refused with exit status 2 & changes nothing. php app.php -h lists it.
+    WARNING!!! A web request was refused, because this application has no web interface.
+      The Starter answers the command line only. A request that reaches app.php through a web server is answered with status 403
+      & one sentence of plain text, & nothing is admitted, so no session folder is made & nothing is swept for it.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------

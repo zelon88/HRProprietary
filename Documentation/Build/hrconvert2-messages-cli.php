@@ -38,6 +38,11 @@
 // /   VAGUE          A line of the catalogue with fewer than ten characters of its own, which would agree with every call. It is held
 // /                  to nothing. Write the words the message begins with.
 // /
+// / A line is held to a call only in a tree that holds the file its block says raises it, from v4.3.2. The kit's catalogue documents
+// / the Example's convertCore.php & the Starter's app.php beside the Engine, & an application that adopts it keeps every line, because
+// / an application adds to the Engine's documents & takes nothing away. So a block that names only files at the root of an application,
+// / none of which this tree holds, is another application's, & is counted apart. A block naming a file beneath Resources is held as ever.
+// /
 // / It exits 0 where there is none of the four, 1 otherwise, & 2 where it is not run from the root of an application.
 // / It reads files & prints what it found. It writes nothing, removes nothing & runs no command, so it needs no contained run.
 // / It is a PHP build tool, so it is gated three ways. See --About Where They Live-- in Documentation/ABOUT_QUALITY_CONTROL.txt.
@@ -231,10 +236,19 @@ function agree($pieces, $documented) {
   $lineInstance = preg_replace('/<[A-Z][A-Z0-9_]*>/', "\x01", trim($documented));
   return preg_match('/^'.$callPattern.'$/s', $lineInstance) === 1 or preg_match('/^'.$linePattern.'$/s', $callInstance) === 1; }
 
+// / Whether the files a block names are another application's: each is at the root of an application, & this tree holds none of them.
+function isAnotherApplications($attributedFiles) {
+  if (count($attributedFiles) === 0) return FALSE;
+  foreach ($attributedFiles as $attributedFile) if (strpos($attributedFile, '/') !== FALSE or is_file($attributedFile)) return FALSE;
+  return TRUE; }
+
 $lines = explode("\n", (string)file_get_contents($catalogue));
-$documentedWarnings = $documentedErrors = $vagueLines = array();
+$documentedWarnings = $documentedErrors = $vagueLines = $attributedFiles = array();
 foreach ($lines as $index => $line) {
-  if (preg_match('/^\s*WARNING!!! (.+)$/', $line, $match) === 1) $documentedWarnings[] = array($index + 1, $match[1]);
+  // / A block says which file raises the lines below it, & a later sentence of the kind names another for the lines below that. A rule ends both.
+  if (trim($line) === str_repeat('-', 160)) $attributedFiles = array();
+  if (preg_match('/^  \S.* raises these, from (.+)$/', $line, $match) === 1) $attributedFiles = (preg_match_all('/[A-Za-z0-9_.\/-]+\.php\b/', $match[1], $fileMatches) > 0) ? $fileMatches[0] : array();
+  if (preg_match('/^\s*WARNING!!! (.+)$/', $line, $match) === 1) $documentedWarnings[] = array($index + 1, $match[1], $attributedFiles);
   if (preg_match('/^\s*ERROR!!! <TIMESTAMP>, \S+-([0-9]+), <SESSION_IDENTIFIER>: (.+)$/', $line, $match) === 1) $documentedErrors[(int)$match[1]][] = array($index + 1, $match[2]); }
 // / A line with fewer than ten characters of its own is held to nothing, as a call with as few is.
 foreach ($documentedWarnings as $key => $documentedWarning) if (strlen(trim(preg_replace('/<[A-Z][A-Z0-9_]*>/', '', $documentedWarning[1]))) < 10) { $vagueLines[] = $documentedWarning; unset($documentedWarnings[$key]); }
@@ -259,12 +273,14 @@ foreach ($calls as $call) {
       $callIsDocumented = FALSE;
       $findings['UNDOCUMENTED']++; print('  UNDOCUMENTED  '.$where.' raises '.($call['Kind'] === 'error' ? 'error '.$number : 'a warning').' the catalogue has no line for: '.implode('<...>', array_map(function ($piece) { return ($piece === NULL) ? '' : $piece; }, $pieces))."\n"); } }
   if ($callIsDocumented) $held[$call['Kind']]++; }
+$foreignWarnings = 0;
 foreach ($documentedWarnings as $documentedWarning) {
+  if (isAnotherApplications($documentedWarning[2])) { $foreignWarnings++; continue; }
   $written = FALSE;
   foreach ($calls as $call) if ($call['Kind'] === 'warning' && $call['Readable']) foreach ($call['Texts'] as $pieces) if (agree($pieces, $documentedWarning[1])) $written = TRUE;
   if (!$written) { $findings['STALE']++; print('  STALE         '.$catalogue.':'.$documentedWarning[0].' documents a warning no call in the tree agrees with: '.$documentedWarning[1]."\n"); } }
 foreach ($vagueLines as $vagueLine) { $findings['VAGUE']++; print('  VAGUE         '.$catalogue.':'.$vagueLine[0].' documents a message with fewer than ten characters of its own: '.$vagueLine[1]."\n"); }
 $total = array_sum($findings);
-if ($total === 0) print($held['warning'].' warnings & '.$held['error'].' errors each have a line of their own, & each of the '.count($documentedWarnings)." warnings the catalogue documents has a call that agrees with it.\nEvery check passed.\n");
+if ($total === 0) print($held['warning'].' warnings & '.$held['error'].' errors each have a line of their own, & each of the '.(count($documentedWarnings) - $foreignWarnings).' warnings the catalogue documents has a call that agrees with it.'.($foreignWarnings > 0 ? ' '.$foreignWarnings.' more are raised by a file at the root of another application, & are held to nothing here.' : '')."\nEvery check passed.\n");
 else print($total." finding(s).\n");
 exit($total === 0 ? 0 : 1);

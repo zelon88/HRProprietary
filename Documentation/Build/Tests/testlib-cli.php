@@ -16,6 +16,9 @@
 //      stops short, an account that is not root. Not a byte of the lifted code is changed for it.
 //   6. It can make PHP remember a path as leading somewhere else, from v0.0.6, with rememberElsewhere().
 //      PHP keeps the path it last resolved a name to, & opens a file where the name last led.
+//   7. It runs a suite inside contained-install.sh too, from the Engine's v4.3.2. There /DATA, /var/www/html & the folders PHP
+//      reads its configuration from are memory made for the run, so a suite can install a whole application & run it. A suite
+//      writes there only through mustBeInstallFolder(), & only inside contained-install.sh.
 //
 // What it does not have: a function that removes a file or a folder. No suite needs one. A suite makes
 // new names & removes nothing, & what it made is memory that is gone when the contained run ends.
@@ -113,6 +116,8 @@ function requireContainment() {
       if ($refusal !== '') break;
       // A mount point that is not a folder here is hidden beneath another, or is one file. Neither can be walked into.
       if (!is_dir($mount['Point']) or testIsBeneath($mount['Point'], $ownFolders)) continue;
+      // Inside contained-install.sh, a folder an installation is made in is memory made for the run, & may be written.
+      if (getenv('HRP_INSTALL') === '1' && $mount['Type'] === 'tmpfs' && testIsInstallFolder($mount['Point'])) continue;
       if (is_writable($mount['Point'])) $refusal = $mount['Point'].' can be written here.'; } }
   if ($refusal === '') {
     $rootStatus = @stat('/');
@@ -130,6 +135,20 @@ function requireContainment() {
   $TestScratch = $scratch;
   $TestOther = $other;
   return $scratch; }
+
+// Says whether a mount point is one contained-install.sh makes in memory for an installation: /DATA, /var/www/html, /var/lib/clamav,
+// & each folder PHP reads its configuration from.
+function testIsInstallFolder($mountPoint) {
+  return in_array($mountPoint, array('/DATA', '/var/www/html', '/var/lib/clamav', '/usr/local/etc/php/conf.d'), TRUE) or preg_match('#^/etc/php/[^/]+/[^/]+/conf\.d$#D', $mountPoint) === 1; }
+
+// Hands back a path only where it lies beneath /DATA or /var/www/html, each memory contained-install.sh made for the run, & only
+// inside contained-install.sh. A suite that installs an application asks this before anything it runs writes there.
+function mustBeInstallFolder($candidatePath) {
+  $isInstall = (getenv('HRP_INSTALL') === '1' && is_string($candidatePath) && testIsBeneath($candidatePath, array('/DATA', '/var/www/html')) && !in_array($candidatePath, array('/DATA', '/var/www/html'), TRUE));
+  if ($isInstall && (strpos($candidatePath, '/../') !== FALSE or substr($candidatePath, -3) === '/..' or strpos($candidatePath, '//') !== FALSE or strpos($candidatePath, "\0") !== FALSE)) $isInstall = FALSE;
+  if ($isInstall && testMountOf($candidatePath)['Type'] !== 'tmpfs') $isInstall = FALSE;
+  if (!$isInstall) testStop('A suite tried to write "'.(is_string($candidatePath) ? $candidatePath : gettype($candidatePath)).'", which is not beneath a folder contained-install.sh made for an installation.');
+  return $candidatePath; }
 
 // Checks the tree a suite was told to test, & refuses one the suite could change.
 function testTree($treePath) {

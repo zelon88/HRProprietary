@@ -10,7 +10,7 @@ APPLICATION INFORMATION ...
 The HRProprietary Engine provides a coherent application environment. It is bundled with an application rather than installed beside one.
 
 FILE INFORMATION ...
-v4.3.1.
+v4.3.2.
 This file contains a list of itemized changes made in each iteration of the Engine.
 
 HARDWARE REQUIREMENTS ...
@@ -23,6 +23,46 @@ What the Engine itself needs is Resources/Engine/depends.php, & --setup installs
 <3 Open-Source
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+
+--------------------
+COMMIT 11/20/2026
+v4.3.2 - The kit carries the approvals tool & the documents tool.
+
+-v4.3.2.
+-Documentation/Build/hrconvert2-approvals.py is HRConvert2's v4.2.4 tool, which the kit's documents already named. --check finds 11 Bubblewrap audits unanswered & no application record, a person's to do.
+-New Documentation/Build/add_to_engine_documents.py is HRProtect's v0.0.7 tool. It refuses a document named outside the tree & an AT other than AT END, & says how it is run.
+
+--------------------
+COMMIT 11/20/2026
+v4.3.2 - The Starter, the smallest application the Engine runs, & the Engine's acceptance test, which found that no pipeline was a failure.
+
+-v4.3.2.
+-New Example/Starter is the smallest application the Engine runs, at app.php, the entry point the Engine assumes. Copy it to begin an application.
+-New test_starter-cli.php installs the Starter inside contained-install.sh & runs it as an administrator would. It needs nothing of the Example's.
+-An application that accepts no pipeline converts nothing. No warning, no 34001, & -v says NONE. The Pipeline Core & engine.php are v4.3.2, & both examples pin both.
+-assemble-example.sh assembles the Starter too. The test library runs a suite inside contained-install.sh, & writes there only through mustBeInstallFolder().
+-The message checker holds a line to a call only where the tree holds the file its block names, so an application keeps the Example's lines & the Starter's.
+-Four lines the Example raises sat under the Workflow Core's attribution, & are the core's.
+
+--------------------
+COMMIT 11/20/2026
+v4.3.2 - The Engine's tests hold HRProtect's schedule & Quarantine suites.
+
+-v4.3.2.
+-New test_schedule-cli.php is the Engine's half of HRProtect's tests/test_schedule.php, with the checks its mutation run found missing.
+-New test_quarantine-cli.php is HRProtect's tests/test_quarantine.php. Three faults planted in the pipeline survived it, & three new checks kill them.
+
+--------------------
+COMMIT 11/20/2026
+v4.3.2 - An installation that cannot be put in place puts back the one it was to replace.
+
+-v4.3.2.
+-The Setup Core is v4.3.2, & the Example pins it.
+-installApplicationTree() removes the installation it replaces only once the new one is in place. One the backup cannot hold waits at Application.old, where an update moves its own.
+-Where the new one cannot take the name, the one it replaces is put back.
+-A backup that is the application folder, is inside it or holds it is not used. Emptying it emptied the installation.
+-A mode that could not be set on an installation in place is warned about, & is not reported as a failed move.
+-New test_install-cli.php installs into folders of its own, & fails a rename, a removal or a mode where a check needs it.
 
 --------------------
 COMMIT 11/20/2026

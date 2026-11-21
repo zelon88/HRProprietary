@@ -99,7 +99,7 @@ Each folder carries its code, its declarations, a README and the approval record
 ## ⚡ Start a New Application
 
 1. Copy `Resources/Kernel/` and `Resources/Engine/` into your application, unchanged.
-2. Write `Resources/versionInfo.php` and your entry point. `Example/HRConvert2/` is the worked example. Read it, and copy none of it whole.
+2. Copy `Example/Starter/` and rename it. It is the smallest application the Engine runs: an entry point, a version file and a contract, with one setting and one command. `Example/HRConvert2/` is the worked example of a whole application. Read it, and copy none of it whole.
 3. Write your contract in `Resources/Contract/`. It holds `app-engine-config.php`, your half of `config-template.php` and your half of `depends.php`. You also write a function that models your settings.
 4. Adopt the pipelines you want. [README.txt](README.txt) gives the seven steps.
 5. Bring it up, from a tree only root can change:

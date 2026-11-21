@@ -10,7 +10,7 @@ APPLICATION INFORMATION ...
 The HRProprietary Engine provides a coherent application environment. It is bundled with an application rather than installed beside one.
 
 FILE INFORMATION ...
-v4.3.1.
+v4.3.2.
 This plain text file says what the Engine starter kit holds & what a new application supplies to run on it.
 
 HARDWARE REQUIREMENTS ...
@@ -45,6 +45,9 @@ names under v4.3.1. ScanCore/ & Pipelines/ moved into Resources/, where an appli
   Example/HRConvert2/            HRConvert2's entry point, version file, contract & bootstrap script,
                                  & the build scripts its manifest names. The worked example. Read it,
                                  & copy none of it whole. Its pins & its contract follow this kit.
+  Example/Starter/               The smallest application the Engine runs, at app.php, from v4.3.2. Its
+                                 contract, one setting & one command, & no web interface. Copy it whole
+                                 & rename it to begin an application. Its pins follow this kit.
   Documentation/                 The Engine's documents, the conventions the code is written to,
                                  ENGINE_CHANGELOG.txt, the record of every change made to the Engine
                                  itself, & each application's record of the changes it made to its
@@ -66,22 +69,26 @@ order to do it in.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 --This Kit's Engine--
 
-THIS ENGINE IS CANON, v4.3.1, & IT RECONCILES BOTH APPLICATIONS' COPIES.
+THIS ENGINE IS CANON, v4.3.2, & IT RECONCILES BOTH APPLICATIONS' COPIES.
 Every application carries its own copy of the Engine, & each may change its copy & record the change
 in its own reconciliation file. The Engine's maintainer merges the copies into one Engine by hand.
 This one is the v4.2.4 kit's Engine with HRConvert2's changes to its v4.3.0, which
 ENGINE_RECONCILIATION_HRCONVERT2.txt records, & HRProtect's to its v0.0.7, which
 ENGINE_RECONCILIATION_HRPROTECT.txt records. ENGINE_CHANGELOG.txt says what v4.3.1 made of them.
+v4.3.2 changed the Setup Core's installer, let an application accept no pipeline, & added the Starter.
 Canon is stamped plainly. An application's copy is v4.3.1r where it is canon's unchanged, & v4.3.1ur
 where the application has changed it. CODING_CONVENTIONS.txt says how a mark is compared.
 
   The kernel                 v4.3.1     HRProtect's sanitizePath(), printableText() &
                                         enterFolderWithoutFollowing(). An --app handler sets the exit
                                         status, & a file the kernel opens is never handed to a command.
-  The Engine                 v4.3.1     HRConvert2's sandbox, to v4.3.0. HRProtect's worker & timers of
-                                        an application's own. One protection page, built from UI/.
-  The Setup Core             v4.3.1     HRConvert2's repair of a displayed section, & HRProtect's
-                                        timers & the folders an application declares.
+  The Engine                 v4.3.2     HRConvert2's sandbox, to v4.3.0. HRProtect's worker & timers of
+                                        an application's own. One protection page, built from UI/. From
+                                        v4.3.2 -v says NONE for an application that accepts no pipeline.
+  The Setup Core             v4.3.2     HRConvert2's repair of a displayed section, & HRProtect's
+                                        timers & the folders an application declares. From v4.3.2 -fp
+                                        removes the installation it replaces only once the new one is
+                                        in place, & puts it back where the new one cannot be.
   The Workflow Core          v4.3.1     HRProtect's printing of text nobody vetted.
   The Event Core             v4.3.1     HRProtect's, & the Engine's from here. It keeps the record of
                                         what an application did & found.
@@ -90,8 +97,9 @@ where the application has changed it. CODING_CONVENTIONS.txt says how a mark is 
   The Environment Core       v4.3.1     Pinned by the Engine, which does not start without it. Its copies
                                         of three kernel functions, which never loaded, are gone, & it
                                         builds no protection page of its own.
-  Every other Core           As the v4.2.4 kit's. Pipeline v4.2.4, Authentication v4.2.3, Email
-                             v4.2.0.
+  The Pipeline Core          v4.3.2     An application that accepts no pipeline converts nothing, & that
+                                        is no failure.
+  Every other Core           As the v4.2.4 kit's. Authentication v4.2.3, Email v4.2.0.
   Every manager              As the v4.2.4 kit's.
   engineConfig.php           v4.3.1. $EngineTimerProvider & $EngineProtectionLogo are new, & five
                              gates nothing read are gone.
@@ -126,6 +134,8 @@ checker hold both.
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 --What A New Application Supplies--
+
+Example/Starter supplies the least of each of these, from v4.3.2, & is the copy to begin from.
 
 1. AN ENTRY POINT at the application root. Its boot is calls, in this order, as convertCore.php's main logic is.
   a. $DefaultApplicationName names the application until config.php does, & $RequiredKernelVersion pins
@@ -343,11 +353,18 @@ Each is run from the application root, & each says what it cannot see above the 
   php Documentation/Build/hrconvert2-messages-cli.php    Each warning & error, held to its line in the catalogue.
 
 Each reads the entry point & the application's model from the contract, $EngineEntryPoint &
-$EngineConfigModelProvider, so a new application runs them unchanged.
+$EngineConfigModelProvider, so a new application runs them unchanged. The documentation checker holds
+the kit's documents to the Example's code, so it is run from the Example's assembly. The other three
+pass from the Starter's as well.
 --no-scancore leaves out a bundled ScanCore, which a new application has only where it adopts the
 ScanCore pipeline.
 Documentation/ABOUT_QUALITY_CONTROL.txt says what each check is for & which fault it was written after.
 The Engine's tests are in Documentation/Build/Tests, & its README.txt says how to run them.
+Two tools ship beside the checkers from v4.3.2. hrconvert2-approvals.py writes the approval record &
+the README beside every pipeline from the dependency manifest, & --check reports what a person has
+still to audit, as ABOUT_DEPENDENCIES.txt says. add_to_engine_documents.py writes an application's
+own lines into its copies of the Engine's documents from an additions file, so an application adds
+to them & takes nothing away, & a later kit's documents take the same lines unchanged.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -374,7 +391,9 @@ Resources/. Unpacking a kit cannot move a folder, so both are moved before this 
   git mv Pipelines Resources/Pipelines
 
 Documentation/ENGINE_CHANGELOG.txt records every change v4.3.1 made, HRProtect's merge among them.
-An application adopts v4.3.1 by taking Resources/Kernel & Resources/Engine whole & pinning what they
+v4.3.2 changed the Setup Core, the Pipeline Core & engine.php. An application already on v4.3.1 takes
+all three from here & pins each at v4.3.2, the Engine's by hand.
+An application adopts v4.3.2 by taking Resources/Kernel & Resources/Engine whole & pinning what they
 report. One that runs the scanners maps their five settings & pins them at v4.3.1, as the Example's
 contract does. Every application pins the Event Core at v4.3.1 & gives EventLoc the root-only role,
 as the Example does. The Engine's half of the template gained --Record Events--, so

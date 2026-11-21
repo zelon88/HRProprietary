@@ -306,6 +306,15 @@ a call begins with a sentence of its own that says what was being done, & the no
 An error's number is read the same way, so a number chosen as the code runs is held to the lines
 of each number it may be, & 0 is where a number is set before it is chosen.
 
+A LINE IS HELD TO A CALL ONLY IN A TREE THAT HOLDS THE FILE ITS BLOCK NAMES, FROM v4.3.2.
+The kit's catalogue documents the Example's convertCore.php & the Starter's app.php beside the
+Engine, & an application that adopts it keeps every line, because an application adds to the
+Engine's documents & takes nothing away. A block whose sentence naming its file names only files at
+the root of an application, none of which the tree holds, is another application's, & is counted
+apart rather than called stale. A block naming a file beneath Resources is held as ever.
+The documentation checker holds the kit's documents to the Example's code, so it is run from the
+Example's assembly. The other three pass from the Starter's as well.
+
 It is a PHP build tool, gated three ways, as --About Where They Live-- describes. It gives up root
 where it is given it, because it only reads, so it needs no contained run.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------

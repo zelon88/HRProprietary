@@ -13,7 +13,7 @@
 // / that carries it.
 // /
 // / File Information ...
-// / v4.3.1.
+// / v4.3.2.
 // / The Engine. It provides the environment an application runs in.
 // / The application pins it exactly via $RequiredEngineVersion.
 // / Error block 35000 through 35019 is reserved. 35000 is the direct load guard every component shares, the kernel's included.
@@ -44,7 +44,7 @@ if (!isset($CoreLoaded) or $CoreLoaded !== TRUE) die('ERROR!!! Engine-35000, The
 
 // / -----------------------------------------------------------------------------------
 // / The version of this Engine. Read by the application WITHOUT executing this file.
-$EngineVersion = 'v4.3.1';
+$EngineVersion = 'v4.3.2';
 // / -----------------------------------------------------------------------------------
 
 
@@ -626,6 +626,8 @@ function showVersionReport() {
     foreach ($pipelineKindCounts as $pipelineKind => $pipelineKindCount) {
       if ($pipelineKindCount === 0) continue;
       print('  '.str_pad($pipelineKindLabels[$pipelineKind], 28).$pipelineKindCount.' of '.$pipelineKindCount.' OK'.$Lol); }
+    // / An application that accepts no pipeline converts nothing, from v4.3.2, & is told so in one line, which is no failure.
+    if (array_sum($pipelineKindCounts) === 0) print('  '.str_pad('Pipelines', 28).'NONE, this application accepts none'.$Lol);
     // / A pipeline whose tools are not installed is verified & still not offered, from v4.2.1, so it is named with the tool to install.
     // / It is not a failure, because an optional tool that is missing costs a feature rather than the application.
     if (is_array($Pipelines) && function_exists('pipelineToolsAreInstalled')) foreach ($Pipelines as $pipelineName => $pipelineRecord) {
@@ -2697,7 +2699,7 @@ function startEngineSteps() {
   if ($PipelineCoreActive && function_exists('enumeratePipelines')) {
     list ($PipelinesAreEnumerated, $Pipelines, $PipelineCount) = enumeratePipelines();
     // / A manager that verified nothing is worse than no manager, because it would send every conversion to a dispatcher with nothing
-    // / behind it. Stand it down & use the fallback.
+    // / behind it. Stand it down & use the fallback. An application that accepts no pipeline verified all it asked for, from v4.3.2.
     if (!$PipelinesAreEnumerated) $PipelineCoreActive = FALSE; }
   if (!$PipelineCoreActive) warningEntry('The Pipeline Core is unavailable. No conversion can run until it is repaired.');
   else if ($Verbose) logEntry('Verified the Pipeline Core. '.$PipelineCount.' conversion pipeline(s) are available.');

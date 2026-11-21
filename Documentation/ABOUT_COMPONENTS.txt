@@ -244,7 +244,8 @@ Environment Core in getAcceptedEnvironmentCore from v4.3.1.
 Pipeline Core checks a pin for every pipeline & every shared module the application accepts.
 The pins are the application's & are set in Resources/Contract/app-engine-config.php, as
 $EngineAcceptedPipelines & $EngineAcceptedSharedModules. ABOUT_PIPELINE_COMPONENTS.txt says how
-they are judged.
+they are judged. An application that accepts none converts nothing, & from v4.3.2 that is no
+failure. -v says NONE where the pipelines are listed.
 
 THE BUILD WRITES EVERY PIN BUT THREE. THOSE ARE EDITED BY HAND.
 php convertCore.php --build --pins reads each pin's version from the component it names &

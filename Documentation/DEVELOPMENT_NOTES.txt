@@ -331,6 +331,17 @@ current folder, which was refused wherever that was a home folder.
 The tree is installed into the Application folder of the data location, & then the installed
 copy's own -fp runs, which publishes the hosted location.
 
+NOTHING IS REMOVED FROM APPLICATION BEFORE THE NEW INSTALLATION IS IN PLACE. v4.3.2.
+The installation it replaces is moved aside, to the backup, or to Application.old where the
+backup cannot hold it, & the staged copy is renamed into place. Where the staged copy cannot take
+the name, the one moved aside is moved back, as an update moves back its own. One at
+Application.old is removed only once the new one is in place. Until v4.3.2 an installation the
+backup could not hold was removed first, so a rename that failed left no installation at all, &
+a mode that could not be set after a rename that worked was reported as the rename failing.
+Application.old is the name an update gives the installation it replaces, so a run of either that
+stops part way leaves one name, & the next run of either clears it. A backup that is Application,
+is inside it or holds it is not used, because emptying it would empty the installation too.
+
 A LISTENER RUNNING DURING AN INSTALLATION KEEPS RUNNING THE RELEASE IT STARTED WITH.
 It is reported, & the administrator restarts it.
 
@@ -468,6 +479,12 @@ installed, & removed, Metadata's MAT2 as well.
 A PIPELINE'S ERROR NUMBERS DID NOT CHANGE WHEN ITS CODE LEFT convertCore.php.
 Operators had already read them. A number a block no longer raises is retired, not reused, as
 13001 through 13005 are.
+
+AN APPLICATION THAT ACCEPTS NO PIPELINE CONVERTS NOTHING. v4.3.2.
+Until v4.3.2 an empty $EngineAcceptedPipelines was a warning, error 34001 & a Pipeline Core stood
+down on every command, & -v counted a failed check. The Engine was built under an application that
+converts, & the Starter, which converts nothing, is what showed it. An application that accepts none
+loads the Pipeline Core with none, & -v says NONE. 34001 is for a list whose pipelines all fail.
 
 NO PIPELINE CARRIES ITS OWN VERSION CHECK.
 Every pipeline asks verifiedToolPath(), so the manifest alone owns each tool's minimum. Two

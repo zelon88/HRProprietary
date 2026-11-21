@@ -12,7 +12,7 @@
 // / on a server for users of any web browser without authentication.
 // /
 // / Fileinformation ...
-// / v4.3.1.
+// / v4.3.2.
 // / HRConvert2 Setup Core.
 // / A detachable installation & configuration component. convertCore.php runs without it.
 // / This file defines functions only. convertCore.php dispatches into them.
@@ -39,7 +39,7 @@ if (!isset($CoreLoaded) or $CoreLoaded !== TRUE) die('ERROR!!! Engine-35000, A c
 
 // / -----------------------------------------------------------------------------------
 // / The component version. convertCore.php reads this without executing the file.
-$SetupCoreVersion = 'v4.3.1';
+$SetupCoreVersion = 'v4.3.2';
 // / -----------------------------------------------------------------------------------
 
 
@@ -2957,34 +2957,96 @@ function copyApplicationEntry($sourcePath, $targetPath) {
 // / -----------------------------------------------------------------------------------
 
 // / -----------------------------------------------------------------------------------
-// / A function to keep the installation an application folder replaces, or to remove it.
+// / A function to move the installation an application folder holds out of the way of the one replacing it.
 // / Accepts the application folder & the backup location. Returns whether it was kept & a
 // / sentence saying what happened, in that order.
-// / It is kept as the backup when the folder the backup lives in is one only root can change &
-// / the backup is not a system folder, which is the same test an update applies to its own
-// / backup. Otherwise it is removed & that is said, because the new installation must go in.
+// / It is kept as the backup when the folder the backup lives in is one only root can change,
+// / the backup is not a system folder, & the backup is not the application folder, inside it or
+// / holding it. Otherwise it is not kept, & that is said, because the new installation must go in.
+// / One that is not kept waits beside the application folder, at oldInstallationPath(), until the new one is in place.
+// / installApplicationTree() removes it then, or puts it back where the new one cannot be put in place.
+// / Until v4.3.2 it was removed here, so a new installation that could not be put in place left none.
+// / Whatever happens, the application folder holding anything afterwards means the installation was not moved.
 function retireApplicationTree($applicationPath, $backupLoc) {
   // / Set variables.
   global $EnableMemoryProtection;
   $TreeWasKept = FALSE;
   $RetireNotice = '';
-  $backupPath = $resolvedParent = $trustNotice = '';
-  $parentIsTrusted = $backupIsUsable = FALSE;
+  $backupPath = $resolvedParent = $trustNotice = $oldPath = $removalNotice = '';
+  $parentIsTrusted = $backupIsUsable = $backupOverlaps = $leftoverWasRemoved = FALSE;
+  $applicationPath = rtrim((string)$applicationPath, DIRECTORY_SEPARATOR);
   $backupPath = rtrim((string)$backupLoc, DIRECTORY_SEPARATOR);
   if ($backupPath !== '') list ($parentIsTrusted, $resolvedParent, $trustNotice) = pathIsTrustedByRoot(dirname($backupPath));
-  $backupIsUsable = ($parentIsTrusted && $resolvedParent === dirname($backupPath));
+  // / A backup that is the application folder, is inside it or holds it would take the installation with it when it is emptied.
+  // / Both folders above them are root's & hold no link, so their names are compared as they are.
+  $backupOverlaps = ($backupPath !== '' && (strpos($backupPath.DIRECTORY_SEPARATOR, $applicationPath.DIRECTORY_SEPARATOR) === 0 or strpos($applicationPath.DIRECTORY_SEPARATOR, $backupPath.DIRECTORY_SEPARATOR) === 0));
+  if ($backupOverlaps) $trustNotice = $backupPath.' is the application folder, is inside it, or holds it.';
+  $backupIsUsable = ($parentIsTrusted && $resolvedParent === dirname($backupPath) && !$backupOverlaps);
   // / The backup before it is removed first. A link there is removed as a link, & a folder only
   // / when it is not a system folder, because a misconfigured backup would empty that instead.
   if ($backupIsUsable && (is_link($backupPath) or (file_exists($backupPath) && pathIsSafeToModifyRecursively($backupPath)))) exec('rm -rf '.escapeshellarg($backupPath).' 2>&1');
-  if ($backupIsUsable && !file_exists($backupPath) && !is_link($backupPath) && @rename((string)$applicationPath, $backupPath)) {
+  if ($backupIsUsable && !file_exists($backupPath) && !is_link($backupPath) && @rename($applicationPath, $backupPath)) {
     $TreeWasKept = TRUE;
     $RetireNotice = 'The installation it replaced is kept at '.$backupPath.'.'; }
-  if (!$TreeWasKept) {
-    if (pathIsSafeToModifyRecursively((string)$applicationPath)) exec('rm -rf '.escapeshellarg((string)$applicationPath).' 2>&1');
-    $RetireNotice = 'The installation it replaced was not kept'.($backupPath === '' ? ', because no backup location is configured.' : ', because '.$backupPath.' could not hold it.'.($trustNotice === '' ? '' : ' '.$trustNotice)); }
+  // / What an earlier run left where the installation waits is removed before it is moved there, because a rename never replaces a
+  // / folder that holds anything. A system folder is never moved, because a misconfigured application folder would move that instead.
+  if (!$TreeWasKept && $applicationPath !== '') {
+    $oldPath = oldInstallationPath($applicationPath);
+    list ($leftoverWasRemoved, $removalNotice) = removeTreeWithoutFollowing($oldPath);
+    if (!$leftoverWasRemoved) warningEntry('What an earlier installation or update left at '.$oldPath.' could not be removed, so the installation at '.$applicationPath.' was not moved aside. '.$removalNotice);
+    else if (pathIsSafeToModifyRecursively($applicationPath)) @rename($applicationPath, $oldPath); }
+  if (!$TreeWasKept) $RetireNotice = 'The installation it replaced was not kept'.($backupPath === '' ? ', because no backup location is configured.' : ', because '.$backupPath.' could not hold it.'.($trustNotice === '' ? '' : ' '.$trustNotice));
   // / Manually clean up sensitive memory. Helps to keep track of variable assignments.
-  purgeSensitiveMemory($EnableMemoryProtection, $backupPath, $resolvedParent, $trustNotice, $parentIsTrusted, $backupIsUsable, $applicationPath, $backupLoc);
+  purgeSensitiveMemory($EnableMemoryProtection, $backupPath, $resolvedParent, $trustNotice, $oldPath, $removalNotice, $parentIsTrusted, $backupIsUsable, $backupOverlaps, $leftoverWasRemoved, $applicationPath, $backupLoc);
   return array($TreeWasKept, $RetireNotice); }
+// / -----------------------------------------------------------------------------------
+
+// / -----------------------------------------------------------------------------------
+// / A function to name the folder an installation waits in while the one replacing it is put in place.
+// / Accepts the application folder. Returns the folder beside it, which is empty where the application folder is.
+// / It is the name an update moves the installation it replaces to, so a run of either clears what a crashed run of the other left.
+// / It is in the folder the application lives in, which installApplicationTree() requires only root can change.
+function oldInstallationPath($applicationPath) {
+  // / Set variables.
+  global $EnableMemoryProtection;
+  $OldPath = '';
+  $applicationPath = rtrim((string)$applicationPath, DIRECTORY_SEPARATOR);
+  if ($applicationPath !== '') $OldPath = $applicationPath.'.old';
+  // / Manually clean up sensitive memory. Helps to keep track of variable assignments.
+  // / $OldPath is not purged, because it is the return value.
+  purgeSensitiveMemory($EnableMemoryProtection, $applicationPath);
+  return $OldPath; }
+// / -----------------------------------------------------------------------------------
+
+// / -----------------------------------------------------------------------------------
+// / A function to put a staged installation in place, or to put back the installation it was to replace.
+// / Accepts the staged copy, the application folder & the folder the installation it replaces was moved to, which is empty where
+// / there was none, in that order. Returns whether the staged copy is in place & a word saying what happened, in that order.
+// / The word is placed, restored where the installation it was to replace was put back, unrestored where that could not be put back,
+// / & failed where there was none.
+// /
+// / The staged copy is beside the application folder, so one rename puts it in place, & either it has the name or nothing does.
+// / Where nothing does, the installation that was moved aside is moved back, as an update moves back the one it replaces.
+// / Only a folder is moved back, because only a folder is moved aside, & only where nothing has the name.
+// / A mode that could not be set on a copy in place is warned about & is not a failure, because the installed copy's -fp sets it.
+function placeStagedTree($stagedPath, $applicationPath, $asidePath) {
+  // / Set variables.
+  global $EnableMemoryProtection;
+  $TreeIsPlaced = FALSE;
+  $PlaceStatus = 'failed';
+  $stagedPath = (string)$stagedPath;
+  $applicationPath = (string)$applicationPath;
+  $asidePath = (string)$asidePath;
+  if ($stagedPath !== '' && $applicationPath !== '' && @rename($stagedPath, $applicationPath)) {
+    $TreeIsPlaced = TRUE;
+    $PlaceStatus = 'placed';
+    if (!@chmod($applicationPath, 0755)) warningEntry('The installation at '.$applicationPath.' is in place, & its mode could not be set to 0755. The installed copy\'s -fp sets it.'); }
+  else if ($asidePath !== '' && is_dir($asidePath) && !is_link($asidePath) && !file_exists($applicationPath) && !is_link($applicationPath) && @rename($asidePath, $applicationPath)) $PlaceStatus = 'restored';
+  else if ($asidePath !== '') $PlaceStatus = 'unrestored';
+  // / Manually clean up sensitive memory. Helps to keep track of variable assignments.
+  // / $TreeIsPlaced & $PlaceStatus are not purged, because they are the return values.
+  purgeSensitiveMemory($EnableMemoryProtection, $stagedPath, $applicationPath, $asidePath);
+  return array($TreeIsPlaced, $PlaceStatus); }
 // / -----------------------------------------------------------------------------------
 
 // / -----------------------------------------------------------------------------------
@@ -3040,7 +3102,9 @@ function codeMissingFromTree($installedTree, $candidateTree) {
 // / Only the entries the contract names in $EngineApplicationLayout are copied, so nothing else in the folder a release was unpacked into is taken along.
 // / The DATA tree stays where the web server serves it.
 // / The copy is made in a folder only root can enter, beside the application folder, & renamed into place, so the application folder holds the whole old installation or the whole new one.
-// / The one it replaces is kept as the backup, as an update keeps one.
+// / The one it replaces is kept as the backup, as an update keeps one. One the backup cannot hold waits beside the application folder
+// / until the new one is in place, & is removed then. Where the new one cannot be put in place, the one it replaces is put back.
+// / Nothing is removed from the application folder before the new installation is in place.
 // / The running tree must be one root trusts, & the folder the application lives in must be one only root can change, or nothing is copied.
 function installApplicationTree($sourceTree, $applicationLoc, $backupLoc) {
   // / Set variables.
@@ -3048,7 +3112,8 @@ function installApplicationTree($sourceTree, $applicationLoc, $backupLoc) {
   $TreeWasInstalled = FALSE;
   $InstallNotice = '';
   $sourcePath = $applicationPath = $applicationParent = $resolvedParent = $trustNotice = $treeNotice = $stagedPath = $layoutEntry = $entryNotice = $retireNotice = $installFailure = '';
-  $parentIsTrusted = $treeIsTrusted = $entryWasCopied = $treeWasKept = FALSE;
+  $asidePath = $placeStatus = $removalNotice = '';
+  $parentIsTrusted = $treeIsTrusted = $entryWasCopied = $treeWasKept = $oldWasRemoved = FALSE;
   $filesCopied = $entryFiles = 0;
   $layoutEntries = $missingCode = array();
   $installedWasRead = FALSE;
@@ -3087,12 +3152,20 @@ function installApplicationTree($sourceTree, $applicationLoc, $backupLoc) {
             $installFailure = 'The running tree was not installed. '.$entryNotice;
             break; } }
         if ($installFailure === '' && !is_file($stagedPath.DIRECTORY_SEPARATOR.engineApplicationEntryPoint())) $installFailure = 'The running tree holds no '.engineApplicationEntryPoint().', so it was not installed.';
-        if ($installFailure === '' && is_dir($applicationPath)) list ($treeWasKept, $retireNotice) = retireApplicationTree($applicationPath, $backupLoc);
-        if ($installFailure === '' && file_exists($applicationPath)) $installFailure = 'The installation at '.$applicationPath.' could not be moved aside, so the new one was not put in its place.';
-        else if ($installFailure === '' && @rename($stagedPath, $applicationPath) && @chmod($applicationPath, 0755)) {
-          $TreeWasInstalled = TRUE;
-          $InstallNotice = 'Installed '.$filesCopied.' file(s) from '.$sourcePath.' into '.$applicationPath.'.'.($retireNotice === '' ? '' : ' '.$retireNotice); }
-        else if ($installFailure === '') $installFailure = 'The staged installation could not be moved into '.$applicationPath.'.';
+        // / The installation it replaces is moved aside first, to the backup or beside the application folder.
+        if ($installFailure === '' && is_dir($applicationPath)) {
+          list ($treeWasKept, $retireNotice) = retireApplicationTree($applicationPath, $backupLoc);
+          $asidePath = $treeWasKept ? rtrim((string)$backupLoc, DIRECTORY_SEPARATOR) : oldInstallationPath($applicationPath); }
+        if ($installFailure === '' && (file_exists($applicationPath) or is_link($applicationPath))) $installFailure = 'The installation at '.$applicationPath.' could not be moved aside, so the new one was not put in its place.';
+        else if ($installFailure === '') {
+          list ($TreeWasInstalled, $placeStatus) = placeStagedTree($stagedPath, $applicationPath, $asidePath);
+          if ($TreeWasInstalled) $InstallNotice = 'Installed '.$filesCopied.' file(s) from '.$sourcePath.' into '.$applicationPath.'.'.($retireNotice === '' ? '' : ' '.$retireNotice);
+          else if ($placeStatus === 'restored') $installFailure = 'The staged installation could not be moved into '.$applicationPath.', so the installation it would have replaced was put back.';
+          else if ($placeStatus === 'unrestored') $installFailure = 'The staged installation could not be moved into '.$applicationPath.', & the installation it would have replaced could not be put back from '.$asidePath.'. Move it back by hand.';
+          else $installFailure = 'The staged installation could not be moved into '.$applicationPath.'.';
+          // / One the backup could not hold is removed only once the new one is in place.
+          if ($TreeWasInstalled && !$treeWasKept && $asidePath !== '') list ($oldWasRemoved, $removalNotice) = removeTreeWithoutFollowing($asidePath);
+          if ($TreeWasInstalled && !$treeWasKept && $asidePath !== '' && !$oldWasRemoved) warningEntry('The installation it replaced is left at '.$asidePath.', & could not be removed. '.$removalNotice.' Remove it by hand.'); }
         // / A staged copy that was not moved into place is removed. It is root's & only root can enter it.
         if (!$TreeWasInstalled && is_dir($stagedPath)) exec('rm -rf '.escapeshellarg($stagedPath).' 2>&1'); } } }
   // / A failure is set only where installing was attempted, & it is the notice the caller is handed.
@@ -3101,7 +3174,7 @@ function installApplicationTree($sourceTree, $applicationLoc, $backupLoc) {
     warningEntry($installFailure); }
   else if ($TreeWasInstalled) logEntry($InstallNotice);
   // / Manually clean up sensitive memory. Helps to keep track of variable assignments.
-  purgeSensitiveMemory($EnableMemoryProtection, $installedWasRead, $missingCode, $sourcePath, $applicationPath, $applicationParent, $resolvedParent, $trustNotice, $treeNotice, $stagedPath, $layoutEntry, $entryNotice, $retireNotice, $installFailure, $parentIsTrusted, $treeIsTrusted, $entryWasCopied, $treeWasKept, $filesCopied, $entryFiles, $layoutEntries, $sourceTree, $applicationLoc, $backupLoc);
+  purgeSensitiveMemory($EnableMemoryProtection, $installedWasRead, $missingCode, $sourcePath, $applicationPath, $applicationParent, $resolvedParent, $trustNotice, $treeNotice, $stagedPath, $layoutEntry, $entryNotice, $retireNotice, $installFailure, $asidePath, $placeStatus, $removalNotice, $parentIsTrusted, $treeIsTrusted, $entryWasCopied, $treeWasKept, $oldWasRemoved, $filesCopied, $entryFiles, $layoutEntries, $sourceTree, $applicationLoc, $backupLoc);
   return array($TreeWasInstalled, $InstallNotice); }
 // / -----------------------------------------------------------------------------------
 
